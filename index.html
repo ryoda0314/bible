@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>聖書を読んで考えたこと / 성경을 읽으며 생각한 것들</title>
+<style>
+  body { background: #0f0d0a; color: #c4b8a4; font-family: Georgia, serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+  .container { text-align: center; padding: 40px; }
+  a { color: #c4a862; text-decoration: none; font-size: 18px; display: inline-block; margin: 16px; padding: 12px 32px; border: 1px solid #3d3428; border-radius: 6px; transition: all 0.2s; }
+  a:hover { background: rgba(139,115,85,0.1); border-color: #8b7355; }
+  .auto { font-size: 12px; color: #6b5d4d; margin-top: 24px; }
+</style>
+<script>
+  // Auto-redirect based on browser language
+  (function() {
+    var lang = (navigator.language || navigator.userLanguage || 'ja').toLowerCase();
+    if (lang.startsWith('ko')) {
+      window.location.replace('./ko/');
+    } else {
+      window.location.replace('./ja/');
+    }
+  })();
+</script>
+</head>
+<body>
+<noscript>
+<div class="container">
+  <a href="./ja/">日本語</a>
+  <a href="./ko/">한국어</a>
+  <div class="auto">JavaScriptが有効な場合、ブラウザの言語設定に基づいて自動的にリダイレクトされます。</div>
+</div>
+</noscript>
+</body>
+</html>

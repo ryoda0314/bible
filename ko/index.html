@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>성경을 읽으며 생각한 것들</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0f0d0a; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const SECTIONS = [
+  { id: "prologue", label: "서문" },
+  { id: "two_creations", label: "두 개의 창조" },
+  { id: "three_voices", label: "세 목소리" },
+  { id: "serpent", label: "뱀의 진실" },
+  { id: "eden", label: "에덴의 설계" },
+  { id: "we", label: "우리" },
+  { id: "original_sin", label: "원죄의 계보" },
+  { id: "tensions", label: "내부의 긴장" },
+  { id: "canon", label: "정경의 선별" },
+  { id: "thomas", label: "또 하나의 목소리" },
+  { id: "structure", label: "구조" },
+  { id: "god_arguments", label: "존재 논증" },
+  { id: "why_believe", label: "왜 믿는가" },
+  { id: "questions", label: "물음" },
+];
+
+const Q = ({ children }) => (
+  <div style={{ border: "1px solid #3d3428", background: "rgba(139,115,85,0.06)", padding: "16px 20px", margin: "24px 0", borderRadius: 6 }}>
+    <div style={{ fontSize: 11, color: "#8b7355", letterSpacing: 3, marginBottom: 6 }}>물음</div>
+    <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.8 }}>{children}</div>
+  </div>
+);
+
+const Heb = ({ text, note }) => (
+  <div style={{ direction: "rtl", textAlign: "right", fontSize: 22, color: "#d4c8b0", margin: "12px 0", lineHeight: 1.6, fontFamily: "'Noto Serif Hebrew', 'David Libre', serif" }}>
+    {text}
+    {note && <div style={{ direction: "ltr", textAlign: "left", fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>{note}</div>}
+  </div>
+);
+
+const Fact = ({ num, children, sub }) => (
+  <div style={{ borderLeft: "2px solid #4a6741", paddingLeft: 20, margin: "16px 0" }}>
+    <div style={{ fontSize: 11, color: "#4a6741", marginBottom: 4 }}>사실 {num}</div>
+    <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.7 }}>{children}</div>
+    {sub && <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>{sub}</div>}
+  </div>
+);
+
+const Think = ({ num, children, sub }) => (
+  <div style={{ borderLeft: "2px solid #8b7355", paddingLeft: 20, margin: "16px 0" }}>
+    <div style={{ fontSize: 11, color: "#8b7355", marginBottom: 4 }}>고찰 {num}</div>
+    <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.7 }}>{children}</div>
+    {sub && <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>{sub}</div>}
+  </div>
+);
+
+const Compare = ({ left, right, leftLabel, rightLabel, leftColor, rightColor }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, margin: "20px 0" }}>
+    <div style={{ background: "rgba(0,0,0,0.2)", border: `1px solid ${leftColor || "#3d3428"}`, borderRadius: 6, padding: 16 }}>
+      <div style={{ fontSize: 11, color: leftColor || "#8b7355", marginBottom: 8, letterSpacing: 2 }}>{leftLabel}</div>
+      <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>{left}</div>
+    </div>
+    <div style={{ background: "rgba(0,0,0,0.2)", border: `1px solid ${rightColor || "#3d3428"}`, borderRadius: 6, padding: 16 }}>
+      <div style={{ fontSize: 11, color: rightColor || "#6b8cba", marginBottom: 8, letterSpacing: 2 }}>{rightLabel}</div>
+      <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>{right}</div>
+    </div>
+  </div>
+);
+
+const TL = ({ year, title, text, color }) => (
+  <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+      <div style={{ width: 10, height: 10, borderRadius: "50%", border: `2px solid ${color || "#8b7355"}`, background: `${color || "#8b7355"}22` }} />
+      <div style={{ width: 1, flex: 1, background: "#2a2520", minHeight: 20 }} />
+    </div>
+    <div style={{ paddingBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11, color: "#6b5d4d", fontFamily: "monospace" }}>{year}</span>
+        <span style={{ fontSize: 14, color: "#e8dcc8" }}>{title}</span>
+      </div>
+      <div style={{ fontSize: 12, color: "#7a6d5e", lineHeight: 1.7 }}>{text}</div>
+    </div>
+  </div>
+);
+
+const SH = ({ children, num }) => (
+  <div style={{ marginBottom: 6 }}>
+    {num && <div style={{ fontSize: 11, color: "#8b7355", letterSpacing: 3, marginBottom: 6 }}>제{num}장</div>}
+    <h2 style={{ fontSize: 28, fontWeight: 400, color: "#e8dcc8", margin: "0 0 12px", fontFamily: "'Cormorant Garamond', serif", fontFeatureSettings: '"lnum"', lineHeight: 1.3 }}>{children}</h2>
+  </div>
+);
+
+const P = ({ children }) => (
+  <p style={{ fontSize: 14, color: "#8a7e6e", lineHeight: 1.8, margin: "0 0 16px" }}>{children}</p>
+);
+
+const Note = ({ children }) => (
+  <div style={{ fontSize: 12, color: "#6b5d4d", padding: "12px 16px", background: "rgba(0,0,0,0.15)", borderRadius: 6, margin: "16px 0", lineHeight: 1.7 }}>{children}</div>
+);
+
+const HR = () => <div style={{ borderTop: "1px solid #1e1b17", margin: "48px 0" }} />;
+
+const GLOSSARY = {
+  "엘로힘": "히브리어로 '신(하나님)'. 문법적으로는 복수형이지만, 단수 동사와 결합되는 경우가 많다",
+  "야훼": "구약성경에 나오는 신의 고유 이름. 히브리어 네 글자 יהוה(YHWH)의 추정 발음",
+  "코호르타티브": "히브리어 동사 활용형의 하나. '~하자'라는 의지·권유를 나타내는 1인칭 형태",
+  "부정사 절대형": "히브리어에서 동사의 의미를 최대로 강조하는 문법 형식",
+  "P자료": "제사장 자료(Priestly source). 문서가설에서 창세기 1장 등을 집필한 것으로 추정되는 제사장 집단의 전승",
+  "J자료": "야훼 자료(Jahwist source). 문서가설에서 창세기 2-3장 등을 집필한 것으로 추정되는 전승",
+  "문서가설": "모세오경이 단일 저자가 아니라 여러 문서(J, E, D, P)가 편집되어 만들어졌다는 가설",
+  "불가타": "4세기 말 히에로니무스가 라틴어로 번역한 성경. 가톨릭교회의 공식 성경으로 1000년 이상 사용",
+  "히에로니무스": "347-420년. 불가타(라틴어 역 성경)의 번역자",
+  "영지주의": "2-3세기 기독교의 한 분파. '지식(그노시스)'에 의한 구원을 주장",
+  "나그함마디": "1945년 이집트에서 발견된 52편의 영지주의 문서군",
+  "충족이유율": "'존재하는 모든 것에는 충분한 이유가 있어야 한다'는 라이프니츠의 원리. 증명 불가능한 공리",
+  "확증편향": "자신의 기존 신념을 뒷받침하는 정보에 주목하고, 모순되는 정보는 경시하는 인지적 경향",
+  "원죄": "아담의 죄가 전 인류에게 유전된다는 교리. 아우구스티누스가 체계화. 동방교회는 공유하지 않는다",
+  "속죄": "그리스도의 죽음으로 인간의 죄가 갚아진다는 교리",
+  "ἐφ' ᾧ": "그리스어 전치사 ἐπί + 관계대명사 ᾧ의 축약형. '~했으므로'가 문법적으로 자연스러운 독법",
+  "in quo": "라틴어로 '그(아담) 안에서'. 불가타에서 ἐφ' ᾧ를 이렇게 번역하여 원죄 교리의 근거가 됨",
+  "도마복음": "114개의 어록으로 이루어진 예수의 말씀 모음. 서사·기적·십자가·부활이 없다",
+  "반증 불가능": "어떤 증거가 나와도 그 주장을 부정할 수 없는 구조. 칼 포퍼가 과학과 비과학의 경계로 삼았다",
+  "삼위일체": "아버지·아들·성령이 하나의 신의 세 위격이라는 교리. 325년 니케아 공의회에서 공식화",
+  "니케아 공의회": "325년에 개최된 기독교 최초의 공의회. 삼위일체 교리를 확립",
+  "정경": "교회가 공식적으로 인정한 성경의 문서 목록",
+  "외경": "정경에 포함되지 않은 문서. 이단적이라 하여 분서된 문서도 포함",
+  "교의": "종교의 공식적인 가르침. 교회가 '이것이 옳다'고 정한 신앙의 내용",
+  "교리": "교의와 거의 동의어. 특히 공의회에서 공식 결정된 가르침",
+  "이단": "교회가 올바르지 않다고 판정한 가르침. 탄압·파문의 대상",
+  "분서": "책을 불태워 파괴하는 것",
+  "동방교회": "콘스탄티노플을 중심으로 발전한 기독교. 그리스어 성경을 사용",
+  "서방교회": "로마를 중심으로 발전한 기독교. 라틴어 불가타를 사용",
+  "수렴진화": "서로 다른 조상을 가진 생물이 비슷한 환경에서 비슷한 형질을 독립적으로 획득하는 현상",
+  "HADD": "Hypersensitive Agency Detection Device. Justin Barrett이 명명한 과민 행위자 탐지 장치",
+  "행위자 탐지 편향": "사건의 원인으로 '의도를 가진 존재'를 가정하기 쉬운 인지적 경향",
+  "마음이론": "타인의 마음 상태(신념·의도·감정)를 추측하는 인지 능력. 4-5세쯤 발달",
+  "안셀무스": "1033-1109년. 캔터베리 대주교. 존재론적 논증을 제창",
+  "라이프니츠": "1646-1716년. 독일의 철학자·수학자. 충족이유율로 유명",
+  "아우구스티누스": "354-430년. 서방교회 최대의 교부. 원죄 교리를 체계화",
+  "펠라기우스": "4-5세기의 신학자. 인간은 죄를 이길 수 있다고 주장. 418년 이단으로 선고",
+  "에이레나이오스": "130-202년경. 리옹의 주교. '이단 반박'에서 영지주의를 비판",
+  "바울": "1세기 기독교 전도자. 신약성경의 약 절반을 집필. 원죄와 속죄의 신학을 구축한 중심인물",
+  "모세": "구약성경 전승에서 모세오경의 저자로 여겨지는 인물",
+  "아타나시우스": "296-373년. 알렉산드리아의 주교. 367년 서한에서 신약 27권을 처음 열거",
+  "필연적 존재": "존재하지 않는 것이 논리적으로 불가능한 존재. 라이프니츠의 논증에서 요청되는 개념",
+  "미세조정": "우주의 물리 상수가 생명을 허용하도록 정밀 조정되어 있다는 주장",
+  "순환논법": "증명하려는 명제를 전제로 사용하는 논리적 오류. A→B→A의 구조",
+  "peccatum originale": "라틴어로 '원죄'. 아우구스티누스가 체계화한 용어",
+  "논증": "어떤 주장이 옳다는 것을 근거를 들어 논리적으로 보이는 것",
+  "정통파": "교회가 '올바르다'고 인정한 입장. 영지주의 등의 '이단'과 대비",
+  "비유": "어떤 것을 다른 것에 빗대어 표현하는 것",
+  "초월적": "인간의 경험이나 물질 세계를 초월한 존재·성질",
+  "공리": "증명 없이 참으로 받아들이는 전제",
+  "명제": "참인지 거짓인지 판정할 수 있는 주장·문장",
+  "전제": "논의의 출발점으로 받아들이는 주장",
+  "탄압": "권력으로 사상·활동을 억압하는 것",
+  "자기언급": "자기 자신에 대해 언급하는 것. 모순이 발생할 수 있다",
+  "복음서": "예수의 생애와 가르침을 기록한 문서. 정경에는 4개가 포함",
+  "속죄론": "그리스도의 죽음이 왜·어떻게 인간의 죄를 갚는지에 대한 신학 이론",
+  "자유의지": "인간이 자신의 행위를 자유롭게 선택할 수 있다는 개념",
+  "예정론": "하나님이 미리 누가 구원받을지 정해 놓으셨다는 교리",
+  "대리속죄": "그리스도의 의가 믿는 자에게 전가되어 죄가 용서된다는 교리",
+  "사도적 계승": "교회의 권위가 사도에서 주교로 끊기지 않고 이어진다는 교리",
+  "유아세례": "원죄 교리에 근거하여 갓 태어난 아이에게 세례를 베푸는 관행",
+  "חַטָּאת": "히브리어로 '죄' '속죄제물'. 창세기 3장에는 나오지 않으며, 성경 최초 등장은 4:7",
+  "필리포복음": "나그함마디에 포함된 영지주의 문서. 예수와 막달라 마리아의 관계를 기록",
+  "마리아복음": "막달라 마리아가 예수로부터 받은 비밀 가르침을 전하는 문서",
+  "유다복음": "유다는 예수의 가장 깊은 가르침을 이해한 유일한 제자였다는 문서",
+  "요한의 비밀서": "나그함마디의 최중요 문서. 구약의 신 얄다바옷을 '거짓 신'으로 묘사",
+  "생존편향": "살아남은 것(성공 사례)만 보이고, 사라진 것(실패 사례)이 보이지 않아 판단이 왜곡되는 경향",
+  "엔트로피": "물리학에서 무질서의 정도를 나타내는 양. 닫힌 계에서는 항상 증가",
+  "열역학 제2법칙": "닫힌 계의 엔트로피는 시간이 지남에 따라 증대한다는 법칙",
+  "루터": "마르틴 루터(1483-1546). 종교개혁의 지도자",
+  "개신교": "16세기 종교개혁으로 가톨릭에서 분리된 기독교의 여러 교파",
+  "가톨릭": "로마 교황을 수장으로 하는 기독교 최대 교파",
+  "정교회": "동방교회의 주류. 그리스어 원문을 계속 사용",
+  "불가지론": "신이 있는지 없는지 '모른다' '알 수 없다'는 입장",
+  "무신론": "신은 존재하지 않는다는 입장",
+  "유신론": "신은 존재한다는 입장",
+  "인격신": "의지·감정·지성을 갖고 인간과 관계하는 신",
+  "탈퇴비용": "어떤 집단·신앙에서 벗어날 때 잃게 되는 것. 사회적 네트워크, 소속감 등",
+  "문화진화론": "문화나 종교가 생물 진화와 유사한 메커니즘으로 변화한다는 이론",
+  "집단적응": "어떤 특성이 개체가 아니라 집단 전체의 생존에 유리하다는 생각",
+  "각인": "어린 시절에 비판 없이 받아들인 신념이나 가치관이 깊이 정착하는 것",
+  "존재론적 논증": "'그보다 위대한 것을 생각할 수 없는 존재' 개념에서 신의 존재를 도출하는 논증",
+  "목적론적 논증": "우주의 정밀한 조정에서 설계자(신)를 추정하는 논증",
+  "도덕 논증": "객관적 도덕의 존재에서 그 근거로서의 신을 추정하는 논증",
+  "개념조작": "단어의 정의를 조작하여 결론을 도출하는 방법. 현실 관찰에 기초하지 않음",
+  "결정 불능": "논리적으로 어느 쪽이 옳은지 판정할 방법이 없는 것",
+  "대가": "죄를 갚기 위해 지불되는 것. 속죄론에서 그리스도의 죽음이 그 대가",
+  "중재자": "신과 인간 사이를 중개하는 존재. 기독교에서 그리스도가 유일한 중재자",
+  "회개": "자신의 죄를 인정하고 마음을 고치는 것. 에스겔에서는 이것만으로 용서됨",
+  "응고인자": "혈액을 굳게 만드는 단백질. 생후 8일째 최고치에 도달",
+  "지동설": "지구가 태양 주위를 도는 설. 갈릴레오가 지지하여 교회에 탄압받음",
+  "광합성": "식물이 태양빛을 에너지로 바꾸는 과정",
+  "유전학": "유전의 구조를 연구하는 학문",
+  "포교": "종교의 가르침을 널리 알리는 활동",
+  "이야기화": "사건이나 개념을 이야기 형식으로 구성하는 것",
+  "은총": "하나님이 인간에게 무조건적으로 베푸는 은혜",
+  "계시": "하나님이 인간에게 진리를 보여주는 것",
+  "성령": "삼위일체의 제3위격. 하나님의 영",
+  "세례": "물로 죄를 씻고 기독교인이 되는 의식",
+  "할례": "남아의 포피를 절제하는 의식. 유대교에서 신과의 계약의 표징. 생후 8일째에 행함",
+  "타락": "아담과 하와가 금지된 열매를 먹은 사건",
+  "교부": "초기 기독교의 지도적 신학자",
+  "영감": "하나님이 성경 저자에게 작용하여 쓰게 했다는 교리",
+  "제사장": "신전에서 의식을 집행하는 종교 지도자",
+  "사도": "예수에게 직접 선택된 12명의 제자",
+  "주교": "교구를 관할하는 기독교 성직자",
+  "반추": "삼킨 음식을 입으로 되돌려 다시 씹는 것. 소, 양의 소화 방식",
+  "반추동물": "먹은 것을 위에서 입으로 되돌려 다시 씹는 동물",
+  "위엄의 복수": "왕이 자신을 '우리'라고 부르는 수사법",
+  "원죄 교리": "아담의 죄가 전 인류에게 유전된다는 교회의 공식 가르침",
+  "모독": "신성한 것을 모욕하는 것. 성령 모독은 용서받지 못하는 죄(마태 12:31)",
+  "소급적용": "나중에 만들어진 개념을 그 이전 시대에 적용하는 것",
+  "근사": "정확한 값이 아니라 그에 가까운 값으로 대체하는 것",
+  "이상화": "현실의 복잡함을 제거하고 단순한 조건을 가정하는 것",
+  "파라미터 공간": "어떤 계를 기술하는 모든 변수가 취할 수 있는 값의 조합 전체",
+  "자작자연": "자기가 문제를 만들고 자기가 해결하는 것",
+  "복잡계": "다수의 요소가 상호작용하여 예측 곤란한 행동을 보이는 시스템",
+  "자기조직화": "외부 지시 없이 시스템이 자발적으로 질서 있는 구조를 형성하는 것",
+};
+
+function App() {
+  const [activeSection, setActiveSection] = useState("prologue");
+  const sectionRefs = useRef({});
+
+  useEffect(() => {
+    const l = document.createElement("link");
+    l.href = "https://fonts.googleapis.com/css2?family=Noto+Serif+Hebrew:wght@400;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap";
+    l.rel = "stylesheet";
+    document.head.appendChild(l);
+  }, []);
+
+  useEffect(() => {
+    const h = () => {
+      const entries = SECTIONS.map(s => {
+        const el = sectionRefs.current[s.id];
+        if (!el) return { id: s.id, top: 99999 };
+        return { id: s.id, top: Math.abs(el.getBoundingClientRect().top - 60) };
+      });
+      setActiveSection(entries.reduce((a, b) => a.top < b.top ? a : b).id);
+    };
+    window.addEventListener("scroll", h, { passive: true });
+    return () => window.removeEventListener("scroll", h);
+  }, []);
+
+  useEffect(() => {
+    const terms = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+    const seen = new Set();
+    const timer = setTimeout(() => {
+      document.querySelectorAll('.tooltip-wrap').forEach(el => {
+        const t = el.childNodes[0]?.textContent?.trim();
+        if (t && GLOSSARY[t]) seen.add(t);
+      });
+      const walk = (node) => {
+        if (node.nodeType === 3 && node.textContent.trim()) {
+          const parent = node.parentElement;
+          if (!parent || parent.closest('.tooltip-wrap') || parent.closest('nav') || parent.closest('button') || parent.tagName === 'A') return;
+          for (const term of terms) {
+            if (seen.has(term)) continue;
+            const idx = node.textContent.indexOf(term);
+            if (idx === -1) continue;
+            seen.add(term);
+            const before = node.textContent.substring(0, idx);
+            const after = node.textContent.substring(idx + term.length);
+            const span = document.createElement('span');
+            span.className = 'tooltip-wrap';
+            span.style.borderBottom = '1px dotted #6b5d4d';
+            span.style.cursor = 'help';
+            span.textContent = term;
+            const tip = document.createElement('span');
+            tip.className = 'tooltip-text';
+            tip.textContent = GLOSSARY[term];
+            span.appendChild(tip);
+            const frag = document.createDocumentFragment();
+            if (before) frag.appendChild(document.createTextNode(before));
+            frag.appendChild(span);
+            if (after) frag.appendChild(document.createTextNode(after));
+            parent.replaceChild(frag, node);
+            return;
+          }
+        } else if (node.nodeType === 1) {
+          Array.from(node.childNodes).forEach(walk);
+        }
+      };
+      walk(document.body);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const scrollTo = id => sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth" });
+  const sec = (id, content) => (
+    <section ref={el => sectionRefs.current[id] = el} style={{ paddingTop: 80, paddingBottom: 40 }}>{content}</section>
+  );
+
+  return (
+    <div style={{ background: "#0f0d0a", minHeight: "100vh", color: "#c4b8a4", fontFamily: "'Noto Serif KR', Georgia, serif" }}>
+      <style>{`
+        .tooltip-wrap { position: relative; }
+        .tooltip-text {
+          visibility: hidden; opacity: 0;
+          position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+          background: #1e1b17; border: 1px solid #3d3428; color: #a89880;
+          padding: 8px 12px; border-radius: 6px; font-size: 11px; line-height: 1.6;
+          width: max-content; max-width: 280px; z-index: 50;
+          transition: opacity 0.2s, visibility 0.2s;
+          pointer-events: none; white-space: normal;
+        }
+        .tooltip-wrap:hover .tooltip-text { visibility: visible; opacity: 1; }
+      `}</style>
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 40, background: "rgba(15,13,10,0.92)", backdropFilter: "blur(8px)", borderBottom: "1px solid #1e1b17" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px", display: "flex", height: 44, alignItems: "center", gap: 2, overflowX: "auto" }}>
+          {SECTIONS.map(s => (
+            <button key={s.id} onClick={() => scrollTo(s.id)}
+              style={{ padding: "6px 10px", fontSize: 11, whiteSpace: "nowrap", border: "none", borderRadius: 4, cursor: "pointer", transition: "all 0.2s", fontFamily: "'Noto Serif KR', serif",
+                background: activeSection === s.id ? "rgba(139,115,85,0.15)" : "transparent",
+                color: activeSection === s.id ? "#c4a862" : "#4a4035" }}>
+              {s.label}
+            </button>
+          ))}
+          <a href="../ja/" style={{ marginLeft: "auto", padding: "4px 10px", fontSize: 10, border: "1px solid #2a2520", borderRadius: 4, color: "#6b5d4d", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>日本語</a>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 24px" }}>
+
+        {/* ===== 서문 ===== */}
+        {sec("prologue", <>
+          <div style={{ paddingTop: 60, paddingBottom: 40 }}>
+            <h1 style={{ fontSize: 42, fontWeight: 400, color: "#e8dcc8", lineHeight: 1.2, margin: "0 0 24px", fontFamily: "'Cormorant Garamond', serif", fontFeatureSettings: '"lnum"' }}>
+              성경을 읽으며<br />생각한 것들
+            </h1>
+            <P>성경을 읽어가면서, 번역이나 교리만으로는 보이지 않는 물음들이 떠올랐습니다. 원문의 기술, 교의의 형성 과정, 배제된 문서들, 신앙을 떠받치는 구조——알아갈수록 생각할 것이 늘어갔습니다. 이 사이트는 거기서 발견한 사실과, 거기서 생겨난 물음을 정리한 것입니다.</P>
+            <P>여기에는 사실과, 거기서 이끌어 낸 고찰과, 물음이 있습니다. 사실과 고찰은 명시적으로 구분해 두었습니다. 그것을 어떻게 받아들일지는 여러분이 결정할 일입니다.</P>
+            <div style={{ background: "rgba(0,0,0,0.15)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "16px 0" }}>
+              <div style={{ fontSize: 13, color: "#c4b8a4", lineHeight: 1.9 }}>
+                나는 "신은 없다"고 주장하고 싶은 게 아닙니다. 신은 있을 수도 있습니다.<br />
+                내가 의문을 품는 것은 "신이 있다"는 주장 자체가 아니라, <strong style={{ color: "#e8dcc8" }}>그 주장을 뒷받침하는 과정</strong>입니다.<br /><br />
+                신경 쓰이는 것은, 신이 있는 이유를 설명할 때의 구조에 늘 확증편향이 작동하고 있는 것처럼 보인다는 점입니다. 좋은 일이 일어나면 "신의 은혜", 나쁜 일이 일어나면 "신의 시련". 모순을 지적하면 "이해가 부족하다" "마음이 속이고 있다". 어떤 결과든 교의를 보강하는 방향으로 처리됩니다. 이 구조를 한번 알아차리고 나면, 모른 척할 수가 없습니다.<br /><br />
+                이 사이트에는 단순한 기술상의 모순(창조 순서가 다르다 등)도 포함되어 있지만, 내가 정말 신경 쓰이는 건 그게 아닙니다. <strong style={{ color: "#e8dcc8" }}>어떤 해석을 골라도 다른 모순이 생기는 부분</strong>과, <strong style={{ color: "#e8dcc8" }}>어느 쪽 해석도 논리적으로 설명하기 어려운 부분</strong>입니다. 하나의 해석으로 설명이 되면 "그렇구나"로 끝납니다. 어느 방향으로 가도 문제가 남을 때, 거기에 진짜 물음이 있다고 생각합니다.<br /><br />
+                이 물음을 파고드는 건, 이 물음이 특별히 중요해서가 아닙니다. 그저, <strong style={{ color: "#e8dcc8" }}>생각하기를 그만두고 믿기만 하는 게 싫을 뿐</strong>입니다. 그래서 원문을 읽습니다. 그래서 모순을 놓치지 않습니다.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 20, margin: "20px 0", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                <div style={{ width: 3, height: 20, background: "#4a6741", borderRadius: 2 }} />
+                <span style={{ color: "#4a6741" }}>사실</span>
+                <span style={{ color: "#6b5d4d" }}>— 원문에서 확인할 수 있는 기술</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                <div style={{ width: 3, height: 20, background: "#8b7355", borderRadius: 2 }} />
+                <span style={{ color: "#8b7355" }}>고찰</span>
+                <span style={{ color: "#6b5d4d" }}>— 사실에서 이끌어 낸 나의 추론</span>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginTop: 32, textAlign: "center" }}>
+              {[
+                { n: "2", l: "개의 창조 기술", s: "1장 vs 2장" },
+                { n: "3", l: "개의 목소리", s: "신·하와·뱀" },
+                { n: "1", l: "개의 번역 문제", s: "ἐφ' ᾧ → in quo" },
+                { n: "52", l: "개의 배제 문서", s: "나그함마디" },
+              ].map((x, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: 26, color: "#c4a862", fontFamily: "'Cormorant Garamond', serif", fontFeatureSettings: '"lnum"' }}>{x.n}</div>
+                  <div style={{ fontSize: 11, color: "#6b5d4d" }}>{x.l}</div>
+                  <div style={{ fontSize: 10, color: "#4a4035" }}>{x.s}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>)}
+
+        <HR />
+
+        {/* ===== 두 개의 창조 ===== */}
+        {sec("two_creations", <>
+          <SH num="1">두 개의 창조 기술</SH>
+          <P>창세기 1장과 2장은 서로 다른 순서로 세계의 창조를 이야기하고 있다.</P>
+          <Compare
+            leftLabel="1장 (P자료)" leftColor="#6b8cba"
+            left="식물(1:11) → 동물(1:20-25) → 인간·남녀 동시(1:26-27). 질서 잡힌 우주 창조. '하나님이 보시기에 좋았더라'의 반복."
+            rightLabel="2장 (J자료)" rightColor="#c4a862"
+            right="2:5 '아직 들풀도 없었더라' → 남자(2:7) → 식물(2:8-9) → 동물(2:19) → 여자(2:21-22). 인간 중심의 동산 이야기."
+          />
+          <Fact num="1">1장과 2장에서 창조의 순서가 다르다. 1장: 식물→동물→인간(남녀 동시). 2장: 2:5에서 식물의 부재를 명시한 뒤 → 남자→식물→동물→여자. 2장은 2:5에서 식물이 없음을 분명히 하고 있다.</Fact>
+          <Think num="1">이 순서 차이를 '보완 관계'로 읽을지 여부는 학술적으로 논쟁 중이다. 다만 2:5가 시간순을 명시하는 것처럼 읽히는 이상, 단순한 보완으로 읽기에는 구조적 어려움이 있어 보인다.</Think>
+          <Fact num="2">1장에서 신은 '엘로힘'으로 불리고, 2장에서는 '야훼 엘로힘'으로 불린다. 신의 이름이 바뀐다.</Fact>
+          <Note>문서가설에서는 1장을 P자료(제사장 자료), 2장을 J자료(야훼 자료)에 귀속시킨다. 서로 다른 시대에 서로 다른 공동체가 쓴 전승이 나중에 하나로 편집되었다.</Note>
+          <Q>같은 사건에 대해 서로 다른 순서의 기술이 있다. 이것은 한 저자의 의도인가, 복수 전승의 병렬인가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 세 목소리 ===== */}
+        {sec("three_voices", <>
+          <SH num="2">세 목소리 — '죽음'을 둘러싼 히브리어의 차이</SH>
+          <P>"먹으면 죽는다"를 둘러싼 세 화자(신·하와·뱀)의 말은, 히브리어 문법 수준에서 명확히 다르다. 이 차이는 번역에서 사라진다.</P>
+
+          <div style={{ borderLeft: "2px solid #c4a862", paddingLeft: 20, margin: "20px 0" }}>
+            <div style={{ fontSize: 11, color: "#c4a862", letterSpacing: 2, marginBottom: 4 }}>신의 경고 (2:17)</div>
+            <Heb text="כִּי בְּיוֹם אֲכָלְךָ מִמֶּנּוּ מוֹת תָּמוּת" />
+            <div style={{ fontSize: 13, color: "#a89880" }}>부정사 절대형(מוֹת) + 정동사(תָּמוּת) = <strong style={{ color: "#c4a862" }}>최대의 강조</strong> "너는 반드시 죽으리라"</div>
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>2인칭 남성 단수. בְּיוֹם(beyom)은 '그날에'로도 '~할 경우에'로도 읽을 수 있다.</div>
+          </div>
+
+          <div style={{ borderLeft: "2px solid #6b8cba", paddingLeft: 20, margin: "20px 0" }}>
+            <div style={{ fontSize: 11, color: "#6b8cba", letterSpacing: 2, marginBottom: 4 }}>하와의 전달 (3:3)</div>
+            <Heb text="פֶּן תְּמֻתוּן" />
+            <div style={{ fontSize: 13, color: "#a89880" }}>강조 없음. "죽을까 봐". 2인칭 <strong style={{ color: "#6b8cba" }}>복수</strong>로 변경. "만져서도 안 된다"를 추가 (신의 원문에 없음).</div>
+          </div>
+
+          <div style={{ borderLeft: "2px solid #a85454", paddingLeft: 20, margin: "20px 0" }}>
+            <div style={{ fontSize: 11, color: "#a85454", letterSpacing: 2, marginBottom: 4 }}>뱀의 부정 (3:4)</div>
+            <Heb text="לֹא מוֹת תְּמֻתוּן" />
+            <div style={{ fontSize: 13, color: "#a89880" }}>신의 강조 구문을 <strong style={{ color: "#a85454" }}>복원한 뒤 부정</strong>. "너희는 절대 죽지 않는다".</div>
+          </div>
+
+          <Note>하와는 신의 말을 약화시켜 뱀에게 전달했다. 뱀은 그것을 최대 강조로 부정했다. 세 화자의 말은 번역에서는 같아 보이지만, 히브리어에서는 완전히 다른 강도를 가진다.</Note>
+          <Q>신은 최대 강조로 "죽는다"고 말했다. beyom을 '그날에'로 읽으면, 먹은 날 죽지 않은 사실과 충돌한다. '죽을 수밖에 없는 상태로의 이행'이라고 읽을 여지는 있지만, 왜 명확하게 말하지 않았는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 뱀의 진실 ===== */}
+        {sec("serpent", <>
+          <SH num="3">뱀은 거짓말을 했는가</SH>
+          <P>뱀의 예고와 실제 결과를 본문에 따라 비교한다.</P>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, margin: "20px 0" }}>
+            <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16 }}>
+              <div style={{ fontSize: 11, color: "#a85454", letterSpacing: 2, marginBottom: 8 }}>뱀의 예고</div>
+              <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>① 죽지 않는다<br />② 눈이 밝아진다<br />③ 하나님처럼 선악을 알게 된다</div>
+            </div>
+            <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16 }}>
+              <div style={{ fontSize: 11, color: "#4a6741", letterSpacing: 2, marginBottom: 8 }}>실제 결과</div>
+              <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>① 먹은 날 죽지 않았다 (930세에 사망)<br />② "두 사람의 눈이 밝아졌다" (3:7)<br />③ "사람이 우리 중 하나 같이 되었다" (3:22 — 신 자신의 인정)</div>
+            </div>
+          </div>
+          <Fact num="1">3:7 "두 사람의 눈이 밝아졌다". 3:22에서 신 스스로 "사람이 우리 중 하나 같이 되었다"고 인정했다. 먹은 날 아담은 죽지 않았으며, 5:5에서 930세에 죽었다.</Fact>
+          <Think num="1">뱀의 예고(눈이 밝아진다, 하나님처럼 된다)와 본문의 기술에는 일치하는 요소가 있다. '죽지 않는다'에 대해서는 beyom의 해석에 달려 있다. 적어도 본문은 뱀의 말을 단순한 전면적 거짓으로 처리하고 있지 않은 것처럼 읽힌다.</Think>
+          <Fact num="2">뱀에 대한 벌의 이유는 "네가 이것을 했으므로" (3:14)라고만 기록되어 있으며, "거짓말을 했으므로"라고는 쓰여 있지 않다. "이것"의 내용은 명시되어 있지 않다.</Fact>
+          <Fact num="3">2:17에서 신이 전달한 정보는 "먹으면 죽는다"뿐이다. "먹으면 눈이 밝아져서 선악을 알게 된다"는 정보는 2:17에 포함되어 있지 않다.</Fact>
+          <Q>적어도 서사상, 뱀의 발언에는 실현된 요소가 있다. 본문은 뱀을 단순한 전면적 거짓으로 처리하고 있지 않다. 그렇다면 뱀은 무엇에 대해 벌을 받은 것인가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 에덴의 설계 ===== */}
+        {sec("eden", <>
+          <SH num="4">에덴의 설계 — 지식 없는 자에게 선택을 요구하는 역설</SH>
+          <Fact num="1">하와가 먹은 이유로 본문에 기술된 것은 "먹음직도 하고, 보암직도 하고, 지혜롭게 할 만큼 탐스럽기도 한" (3:6) 감각적 욕구이다. 도덕적 판단으로는 기술되어 있지 않다.</Fact>
+          <Think num="1">선악을 아는 지식이 없는 상태에서 '순종=선, 불순종=악'이라는 판단이 성립하는지는, '선악을 아는 지식'이 가리키는 범위에 달려 있다. 다만 본문상, 하와의 동기는 선악의 판단이 아니었다.</Think>
+          <Fact num="2">3:22에서 신은 추방의 이유를 말하고 있다: "사람이 우리 중 하나 같이 되어 선악을 알게 되었으니, 이제 그가 손을 내밀어 생명나무 열매도 따먹고 영원히 살까 봐". 선악의 지식과 불사의 조합을 막는 것이 추방의 이유로 기술되어 있다.</Fact>
+          <Think num="2">3:17-19의 저주의 말은 벌로도 읽히기 때문에, 추방이 '벌이 아니다'라고 단정할 수는 없다. 그러나 3:22가 추방의 이유로 선악+불사의 저지를 명시하고 있다는 것은 사실이다.</Think>
+          <Fact num="3">창세기의 신은 동산을 거닐고 (3:8), "어디 있느냐"고 묻고 (3:9), "누가 벗은 줄을 알게 했느냐"고 묻고 (3:11), 사후적으로 인정하고 있다 (3:22).</Fact>
+          <Think num="3">이러한 묘사는 후대 신학이 정의한 전지한 신의 묘사와 달라 보인다. '수사적 질문'이라는 해석도 있지만, 3:22의 사후적 인정은 수사로 설명하기 어렵다.</Think>
+          <Q>선악의 판단 능력이 없는 존재의 행위를 '죄'라고 부를 수 있는가. 죄의 인식은 죄 이후에야 올 수 있다. 그렇다면 원죄의 전제는 성립하는가.</Q>
+          <Q>왜 신은 선악의 지식과 불사의 조합을 막고 싶었는가. '우리 중 하나 같이 되었다'는 것은 무엇을 의미하는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 우리 ===== */}
+        {sec("we", <>
+          <SH num="5">נַעֲשֶׂה — "우리가 만들자"</SH>
+          <P>창세기에는 신이 "우리"라는 복수형으로 말하는 대목이 3곳 있다. 앞뒤는 모두 단수형인데, 이 3곳만 복수가 된다.</P>
+          {[
+            { r: "1:26", h: "וַיֹּאמֶר אֱלֹהִים נַעֲשֶׂה אָדָם בְּצַלְמֵנוּ כִּדְמוּתֵנוּ", t: "엘로힘이 말하기를 (단수) — '우리가 만들자(복수), 사람을, 우리의 형상대로'", n: ["וַיֹּאמֶר (말했다) = 단수", "נַעֲשֶׂה (만들자) = 1인칭 복수", "바로 뒤 1:27에서는 בְּצַלְמוֹ (그의 형상대로)로 단수로 돌아온다"] },
+            { r: "3:22", h: "הֵן הָאָדָם הָיָה כְּאַחַד מִמֶּנּוּ", t: "'보라, 사람이 우리 중 하나 같이 되었다'", n: ["כְּאַחַד מִמֶּנּוּ = 복수 집단의 일원을 문법적으로 요구하는 구문"] },
+            { r: "11:7", h: "הָבָה נֵרְדָה וְנָבְלָה שָׁם שְׂפָתָם", t: "'자, 우리가 내려가서(복수) 거기서 그들의 언어를 흩뜨리자(복수)'", n: ["11:5에서는 וַיֵּרֶד (단수 = 그가 내려갔다)", "2절 차이로 단수→복수로 전환"] },
+          ].map((v, i) => (
+            <div key={i} style={{ borderLeft: "2px solid #c4a862", paddingLeft: 20, margin: "16px 0" }}>
+              <div style={{ fontSize: 11, color: "#6b5d4d", letterSpacing: 2, marginBottom: 4 }}>창세기 {v.r}</div>
+              <Heb text={v.h} />
+              <div style={{ fontSize: 13, color: "#a89880", marginBottom: 8 }}>{v.t}</div>
+              {v.n.map((n, j) => <div key={j} style={{ fontSize: 12, color: "#6b5d4d", paddingLeft: 12 }}>▸ {n}</div>)}
+            </div>
+          ))}
+          <Q>발화는 단수(한 분의 신)인데, 내용은 복수(우리). 3곳 모두 '계획은 복수, 실행은 단수'. 이 불일치는 왜 존재하는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 원죄의 계보 ===== */}
+        {sec("original_sin", <>
+          <SH num="6">원죄가 만들어지기까지 — 약 1000년의 여정</SH>
+          <P>'아담이 먹었다 = 죄 = 전 인류가 짊어진다'는 성경의 핵심 교리이다. 그러나 원문을 따라가 보면, 이 연결이 언제·어떻게 만들어졌는지가 드러난다.</P>
+          <Fact num="1">창세기 3장에 חַטָּאת(죄)라는 단어는 단 한 번도 나오지 않는다. "그녀가 그 열매를 따서 먹었다" (3:6) — 행위의 기술뿐이다.</Fact>
+          <Fact num="2">חַטָּאת의 성경 첫 등장은 창세기 4:7이다. 게다가 "네가 그것을 다스릴 수 있다(וְאַתָּה תִּמְשׇׁל־בּוֹ)"고 신 자신이 말하고 있다.</Fact>
+          <Fact num="3">에스겔 18:20 "아들이 아버지의 죄를 짊어지지 않는다(בֵּן לֹא־יִשָּׂא בַּעֲוֺן הָאָב)" — 야훼가 자기 존재를 걸고 맹세(חַי־אָנִי)한 뒤 한 말이다. 성경에서 극히 무거운 형식의 선언 가운데 하나.</Fact>
+
+          <TL year="기원전 10-9세기?" title="창세기 3장 (J자료)" text="'먹었다'고만 쓰여 있다. חַטָּאת(죄)라는 단어가 없다." color="#6b8cba" />
+          <TL year="기원전 10-9세기?" title="창세기 4:7" text="חַטָּאת 성경 최초 등장. '네가 그것을 다스릴 수 있다' — 인간은 죄를 이길 수 있는 존재로 묘사." color="#6b8cba" />
+          <TL year="기원전 6세기" title="에스겔 18:20" text="'아들이 아버지의 죄를 짊어지지 않는다' — 죄의 세대 간 유전을 명확히 부정." color="#6b8cba" />
+          <TL year="56-57년" title="바울·로마서 5:12" text="'한 사람을 통해 죄가 세상에 들어왔다' — 아담의 행위와 전 인류의 죄를 처음으로 연결. 그리스어 ἐφ' ᾧ πάντες ἥμαρτον = '모든 사람이 각자 죄를 지었으므로'." color="#c4a862" />
+          <TL year="4세기 말" title="불가타 역: ἐφ' ᾧ → in quo" text="라틴어 번역에서 '그(아담) 안에서'로 번역되어, '전 인류가 아담 안에서 죄를 지었다'로 읽히게 되었다. 이 번역 선택이 서방교회의 원죄 교리를 크게 방향짓게 되었다." color="#a85454" />
+          <TL year="400년경" title="아우구스티누스 — 원죄의 체계화" text="그리스어를 읽지 못했던 아우구스티누스는 불가타의 in quo에 의거하여 원죄(peccatum originale)를 확립. 동방교회는 이 교리에 구속되지 않는다." color="#c4a862" />
+          <TL year="418년" title="카르타고 공의회" text="펠라기우스의 가르침(인간은 죄를 이길 수 있다 — 실은 창세기 4:7에서 하나님 자신이 말한 내용)을 이단으로 단죄. 원죄와 유아세례의 필요성이 서방교회의 공식 교리가 되었다. 동방교회는 이 결정에 구속되지 않는다." color="#c4a862" />
+
+          <Compare
+            leftLabel="서방교회 (가톨릭·개신교)" leftColor="#c4a862"
+            left="죄가 아담에게서 유전 → 전 인류가 유죄 → 은총만이 구원. 순서: 죄 → 죽음"
+            rightLabel="동방교회 (정교회)" rightColor="#6b8cba"
+            right="죽음이 아담에게서 퍼졌다 → 죽기 때문에 죄를 짓기 쉽다 → 자유의지는 손상되지 않았다. 순서: 죽음 → 죄"
+          />
+          <Q>원문에 '죄'라는 단어가 없는 사건이, 약 1000년과 하나의 번역상의 선택을 거쳐 10억 명의 교리가 되었다. 게다가 그리스어를 모국어로 하는 동방교회는 이 교리를 공유하지 않는다. 이 과정을 알고 나서, 당신은 어떻게 읽겠는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 내부의 긴장 ===== */}
+        {sec("tensions", <>
+          <SH num="7">성경 내부의 긴장</SH>
+          <P>같은 성경 안에서, 같은 물음에 대해 서로 다른 답이 존재한다.</P>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>조상의 죄는 자손에게 미치는가</div>
+          {[
+            { from: "출애굽기 20:5", to: "3~4대까지 미친다" },
+            { from: "에스겔 18:20", to: "미치지 않는다 '아들은 아버지의 죄를 지지 않는다'" },
+            { from: "로마서 5:12", to: "전 인류에게 영원히 미친다" },
+          ].map((x, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, margin: "6px 0", fontSize: 12 }}>
+              <span style={{ color: "#6b8cba", minWidth: 120 }}>{x.from}</span>
+              <span style={{ color: "#4a4035" }}>→</span>
+              <span style={{ color: "#a89880" }}>{x.to}</span>
+            </div>
+          ))}
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>구원의 조건</div>
+          <Compare
+            leftLabel="에스겔 18:21-22" leftColor="#6b8cba"
+            left="'악인이 만약 그 죄에서 떠나면……그는 반드시 살리라. 지은 모든 허물은 기억되지 않으리라' — 회개만으로 용서된다. 대가도 중재자도 필요 없다."
+            rightLabel="로마서 3:23-24" rightColor="#c4a862"
+            right="'그리스도 예수 안에 있는 속량으로 말미암아 값없이 의롭다 하심을 얻은 자 되었으니' — 그리스도의 속죄 없이는 구원받을 수 없다."
+          />
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>자유의지</div>
+          <Compare
+            leftLabel="자유의지를 전제" leftColor="#4a6741"
+            left="신명기 30:19 '생명을 택하라'"
+            rightLabel="자유의지와 긴장" rightColor="#a85454"
+            right="출애굽기 9:12 '주께서 바로의 마음을 완악하게 하셨다' / 로마서 9:18 '원하시는 자를 완악하게 하신다'"
+          />
+          <Note>바울은 로마서 5장에서 아담의 행위와 전 인류의 죄를 연결하고(후에 '원죄'로 불리게 되는 교리의 기초), 같은 로마서 9장에서 '원하시는 자를 완악하게 하신다'는 예정론적 기술도 하고 있다. 자유의지에 의한 타락과 미리 정해진 선택이 같은 서한 안에 공존한다.</Note>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>도덕 명령과 하나님의 행위</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, fontSize: 12, margin: "12px 0" }}>
+            {[
+              ["살인하지 말라", "젖먹이를 포함한 전원의 살해를 명한다 (사무엘상 15:3)"],
+              ["원수를 사랑하라", "믿지 않는 자를 영원히 벌한다"],
+              ["아들은 아버지의 죄를 지지 않는다", "수백 년 전 조상의 행위를 이유로 자손을 죽인다"],
+              ["한없이 용서하라", "한 번의 위반을 전 인류에게 영원히 짊어지게 한다"],
+            ].map(([a, b], i) => (
+              <React.Fragment key={i}>
+                <div style={{ background: "rgba(74,103,65,0.1)", padding: "8px 12px", borderBottom: "1px solid #1e1b17", color: "#8a9b82" }}>{a}</div>
+                <div style={{ background: "rgba(168,84,84,0.06)", padding: "8px 12px", borderBottom: "1px solid #1e1b17", color: "#8a6e6e" }}>{b}</div>
+              </React.Fragment>
+            ))}
+          </div>
+          <Q>같은 성경 안에 모순되는 답이 있다. 이것은 '깊은 조화'인가, '서로 다른 저자의 서로 다른 신학의 공존'인가.</Q>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>어떤 해석을 골라도 긴장이 생기는 물음들</div>
+          <P>이하의 물음들은 복수의 해석이 가능하지만, 어떤 해석을 골라도 다른 문제가 생긴다.</P>
+          {[
+            { t: "하나님은 후회하시는가", d: "창세기 6:6 '사람을 만든 것을 후회하셨다'. 반면 민수기 23:19 '하나님은 후회하지 않으신다'. 말라기 3:6 '변하지 않는다'. 정말로 후회했다→전지하지 않다. 비유→어떤 기술이 비유인지 판단할 기준이 없다. 대응을 바꿨다→'변하지 않는다'와 모순." },
+            { t: "유다의 배신은 예정되어 있었는가", d: "요한 13:18 '성경이 이루어지기 위하여'. 마태 26:24 '그 사람은 태어나지 않았더라면 좋았을 것'. 예정→자유의지 없음→'화'는 부당. 자유의지로 배신→'이루어지기 위하여'는 예지가 아니라 목적." },
+            { t: "기도는 하나님의 계획을 바꾸는가", d: "출애굽기 32:14 '주께서 뜻을 돌이키셨다'. 이사야 46:10 '나의 뜻을 다 이루리라'. 바꾼다→원래 계획이 완벽하지 않았다. 바꾸지 않는다→기도할 의미가 없다." },
+            { t: "용서받지 못하는 죄가 있는가", d: "마태 12:31 '성령을 모독하는 것은 용서받지 못한다'. 요한1서 1:9 '만일 우리가 죄를 고백하면…모든 불의에서 깨끗하게 하실 것이요'. 용서받지 못하는 죄가 있다→'모든'에 예외가 있다면 '모든'이 아니다. 전능한 신이 용서할 수 없는 죄가 있다→전능이 아니다." },
+            { t: "그리스도 이전의 사람은 어떻게 되는가", d: "요한 14:6 '나로 말미암지 않고는 아버지께로 올 자가 없느니라'. 다른 기준으로 심판받았다→'나로 말미암지 않고는'에 예외가 존재한다. 속죄가 시간을 초월하여 적용→본문에 그런 설명이 없다. 몰랐으니까 용서→그렇다면 복음을 모르는 편이 안전하다. 전도할수록 '듣고도 믿지 않은' 사람이 늘어난다." },
+          ].map((x, i) => (
+            <div key={i} style={{ background: "rgba(0,0,0,0.15)", border: "1px solid #2a2520", borderRadius: 6, padding: 14, margin: "10px 0" }}>
+              <div style={{ fontSize: 13, color: "#c4a862", marginBottom: 6 }}>{x.t}</div>
+              <div style={{ fontSize: 12, color: "#7a6d5e", lineHeight: 1.7 }}>{x.d}</div>
+            </div>
+          ))}
+        </>)}
+
+        <HR />
+
+        {/* ===== 정경의 선별 ===== */}
+        {sec("canon", <>
+          <SH num="8">정경은 어떻게 만들어졌는가</SH>
+          <P>성경의 66권(또는 73권)은, 초기 기독교에 존재했던 수많은 문서 중에서 교회 지도자가 선별한 것이다. 선택되지 못한 문서는 외경이 되었고, 일부는 분서되었다.</P>
+          <TL year="2-3세기" title="초기 기독교의 다양성" text="정경 사복음서 외에도 도마복음, 필리포복음, 마리아복음, 유다복음 등 다수의 문서가 유통되었다." color="#6b8cba" />
+          <TL year="180년경" title="에이레나이오스 '이단 반박'" text="영지주의에 대한 반론으로 집필. 이 저작을 통해 정경·신조·사도적 계승·속죄론의 발전이 진행되었다." color="#c4a862" />
+          <TL year="397년" title="카르타고 공의회" text="신약 27권을 공식 승인. 교의에 맞는 문서를 고르고, 맞지 않는 문서를 배제했다." color="#c4a862" />
+          <TL year="367년" title="아타나시우스의 서한" text="알렉산드리아 주교 아타나시우스가 현재의 신약 27권을 처음으로 열거. 이전까지는 어떤 문서가 '성경'인지 공식적으로 확정되어 있지 않았다." color="#6b8cba" />
+          <TL year="4세기 이후" title="영지주의 문서의 분서" text="내용에 문제가 있다고 판단된 문서는 연구가 금지되고 분서의 대상이 되었다. 정통파의 탄압은 로마에 의한 기독교 탄압에 못지않은 격렬함이었다고 전해진다." color="#a85454" />
+          <TL year="1945년" title="나그함마디 문서 발견" text="이집트 동굴에서 52편의 문서가 발견되었다. 탄압을 피해 1600년간 숨겨져 있던 영지주의의 경전. 지워진 쪽의 목소리를 처음으로 직접 읽을 수 있게 되었다." color="#4a6741" />
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 8, padding: 20, margin: "24px 0" }}>
+            <div style={{ fontSize: 13, color: "#c4a862", marginBottom: 12 }}>영지주의의 창세기 독법</div>
+            <P>2-3세기의 영지주의는 같은 창세기를 정통파와 정반대로 읽었다.</P>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 12 }}>
+              {[
+                ["에덴은 축복의 장소", "에덴은 거짓 신이 인간을 가둔 감옥"],
+                ["뱀은 악마", "뱀은 지고신이 지식을 주기 위해 보낸 사자"],
+                ["선악을 아는 나무는 시련", "선악을 아는 나무는 그노시스(참된 지식)를 주는 것"],
+                ["타락 = 원죄", "타락 = 거짓 신의 지배에서의 탈출"],
+                ["신앙으로 구원받는다", "지식(인식)으로 구원받는다"],
+                ["교회가 필요하다", "각자가 직접"],
+              ].map(([a, b], i) => (
+                <div key={i} style={{ padding: "8px 0", borderBottom: "1px solid #1e1b17" }}>
+                  <div style={{ color: "#6b8cba", marginBottom: 2 }}>정통파: {a}</div>
+                  <div style={{ color: "#a85454" }}>영지주의: {b}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Fact num="1">에이레나이오스의 '이단 반박'(180년경)은 영지주의에 대한 반론으로 집필되었다. 브리태니커 백과사전에 따르면, 이 저작을 통해 '권위 있는 성경 정경, 신조, 주교직의 권위의 발전이 진행되었다'. 정통파의 교의 체계화가 영지주의와의 논쟁 속에서 가속되었다는 것은 정통파 측의 학술 연구에서도 인정되고 있다.</Fact>
+          <Think num="1">영지주의가 '지식으로 구원받는다'고 주장하는 가운데 정통파는 '신앙으로 구원받는다'를 명확히 하고, 영지주의가 '각자가 직접 계시를 받을 수 있다'고 주장하는 가운데 '교회의 권위를 통해서'를 정비했다. 다만 논쟁이 유일한 원인이라고는 말할 수 없으며, 로마제국의 정치, 유대교와의 관계 등 복수의 요인이 있다.</Think>
+          <Q>정경을 고른 것은 인간이다. 고르는 기준을 정한 것도 인간이다. '전부 읽으면 안다'고 할 때, 그 '전부'에 배제된 수십 편의 문서는 포함되어 있지 않다. 교회가 설계한 '전부'를 읽고 교회의 교의에 도달하는 것은, 무엇을 의미하는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 또 하나의 목소리 ===== */}
+        {sec("thomas", <>
+          <SH num="9">또 하나의 목소리 — 도마복음</SH>
+          <P>114개의 어록으로 이루어진 예수의 말씀 모음. 서사 없음, 기적 없음, 십자가 없음, 부활 없음. 정경의 복사본이 아니라 독립된 별도 계통의 전승에 기초한다는 견해가 유력하다.</P>
+          <Compare
+            leftLabel="정경 복음서" leftColor="#6b8cba"
+            left="형식: 서사(생애·죽음·부활) / 구원: 신앙(예수의 죽음과 부활을 믿는 것) / 중재: 교회가 필요 / 하나님 나라: 장래에 올 것(종말론)"
+            rightLabel="도마복음" rightColor="#c4a862"
+            right="형식: 어록집(말씀만) / 구원: 인식(스스로 해석하는 것) / 중재: 불필요 / 하나님 나라: 이미 여기에 있다"
+          />
+          <Q>정통 기독교 교의의 핵심(원죄·속죄·부활)은, 두 독립 전승의 공통 부분에 포함되어 있지 않다. 이것은 무엇을 의미하는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 구조 ===== */}
+        {sec("structure", <>
+          <SH num="10">성경에 내장된 구조</SH>
+          <P>성경에는 결과적으로 비판을 봉쇄하는 기능을 지닌 기술이 여러 곳에 포함되어 있다.</P>
+          {[
+            { r: "히브리서 11:1", t: "'아직 보지 못한 사실을 확인하는 것' — 증거 없이 믿는 것이 신앙의 정의" },
+            { r: "잠언 3:5", t: "'네 지식에 의지하지 말라'" },
+            { r: "고린도전서 1:19-20", t: "'지혜 있는 자의 지혜를 멸하고' '이 세상의 지혜를 어리석게 하셨다'" },
+            { r: "예레미야 17:9", t: "'만물보다 거짓된 것이 마음이라' — 분석하는 마음 자체가 거짓" },
+            { r: "마태 13:19", t: "씨 뿌리는 비유 — '천국 말씀을 듣고도 깨닫지 못하는 자…이는 길가에 뿌린 것'" },
+          ].map((x, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, margin: "8px 0", fontSize: 13 }}>
+              <span style={{ color: "#6b5d4d", minWidth: 140, flexShrink: 0 }}>{x.r}</span>
+              <span style={{ color: "#a89880" }}>{x.t}</span>
+            </div>
+          ))}
+          <Note>이것들을 합치면: 증거를 요구하지 마라 → 자기 지식을 믿지 마라 → 인간의 지혜는 어리석다 → 마음은 거짓된다 → 믿지 않는 것은 네가 길가이기 때문. 비판하는 행위 자체가 신앙의 틀 안에서 무효화되는 구조를 갖는 것처럼 보인다.</Note>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>반증 불가능한 구조</div>
+          {[
+            ["좋은 일이 일어났다", "'신의 은혜'"],
+            ["나쁜 일이 일어났다", "'신의 시련'"],
+            ["기도가 이루어졌다", "'신앙 덕분'"],
+            ["기도가 이루어지지 않았다", "'신앙이 부족하다' 또는 '신의 계획'"],
+            ["모순을 지적했다", "'마음이 거짓되다' 또는 '이해가 부족하다'"],
+          ].map(([a, b], i) => (
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0", fontSize: 12 }}>
+              <span style={{ color: "#6b5d4d", minWidth: 160 }}>{a}</span>
+              <span style={{ color: "#4a4035" }}>→</span>
+              <span style={{ color: "#a89880" }}>{b}</span>
+            </div>
+          ))}
+          <Note>어떤 결과든 교의를 보강하는 방향으로 처리된다. 칼 포퍼의 기준에 따르면, 반증할 수 없는 명제는 과학적 주장으로서의 힘을 갖지 않는다.</Note>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>구원 논리의 분해</div>
+          {[
+            { s: "1", t: "하나님이 선악을 아는 나무를 심는다", sub: "창세기 2:9" },
+            { s: "2", t: "'먹지 말라'고 금한다", sub: "창세기 2:17" },
+            { s: "3", t: "선악을 모르는 인간이 먹는다", sub: "창세기 3:6 (חַטָּאת라는 말 없음)" },
+            { s: "4", t: "'우리 중 하나 같이 되었다'고 하나님이 위협을 느낀다", sub: "창세기 3:22" },
+            { s: "5", t: "추방한다 (생명나무의 상실)", sub: "창세기 3:24" },
+            { s: "⋯", t: "약 1000년 후, 바울이 이것을 '죄'로 재정의", sub: "로마서 5:12" },
+            { s: "⋯", t: "그리스어 ἐφ' ᾧ(각자가 죄를 지었으므로)를 라틴어 in quo(아담 안에서)로 번역", sub: "불가타" },
+            { s: "⋯", t: "그리스어를 읽지 못한 아우구스티누스가 이 번역에 기초하여 '원죄'를 체계화", sub: "400년경" },
+            { s: "∴", t: "전 인류는 태어난 시점에 유죄 → 스스로 갚을 수 없다 → 하나님의 아들의 죽음이 필요 → 믿으면 구원", sub: "" },
+          ].map((x, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", margin: "6px 0" }}>
+              <span style={{ fontSize: 12, color: "#c4a862", width: 20, textAlign: "right", flexShrink: 0, fontFamily: "monospace" }}>{x.s}</span>
+              <div>
+                <span style={{ fontSize: 13, color: "#c4b8a4" }}>{x.t}</span>
+                {x.sub && <span style={{ fontSize: 11, color: "#4a4035", marginLeft: 8 }}>{x.sub}</span>}
+              </div>
+            </div>
+          ))}
+          <Q>규칙을 만든 것도, 벌을 정의한 것도, 용서의 조건을 정한 것도 같은 존재이다. 전능자에게 다른 선택지는 없었는가.</Q>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>속죄론의 5가지 문제</div>
+          <P>'죄→속죄→구원'의 논리를 전제부터 검증한다.</P>
+          <Fact num="">에스겔 18:21-22에서 야훼 자신이 '악인이 죄에서 떠나면 반드시 살리라. 지은 죄는 기억되지 않으리라'고 말했다. 대가도 중재자도 필요 없다. 회개만으로 용서된다.</Fact>
+          <Think num="">위 사실을 바탕으로, 속죄의 논리에는 다음과 같은 물음이 생긴다:</Think>
+          {[
+            { t: "왜 대가가 필요한가", d: "전능한 신이 규칙을 정했다. 전능하다면 규칙을 바꿀 수 있을 것이다. 그런데도 자기 아들을 희생시켰다. 정의의 규칙이 신 위에 있다면 전능이 아니다. 신이 만든 규칙이라면 바꿀 수 있을 것이다." },
+            { t: "에스겔의 용서 vs 그리스도의 희생", d: "에스겔에서는 회개만으로 용서된다. 그렇다면 왜 그리스도의 희생이 필요했는가." },
+            { t: "대리 속죄 vs 에스겔 18:20", d: "'의인의 의는 자기에게만 돌아간다.' 그리스도의 의를 타인에게 전가하는 대리 속죄는 이 원칙과 긴장한다." },
+            { t: "신이 신에게 지불하는 구조", d: "삼위일체 교의 하에서는 신(아버지)이 신(아들)을 희생시켜 신(아버지)에게 바치고, 신(아버지)이 그것을 받아들여 인간을 용서한다. 같은 존재 안에서 완결하는 구조로 보인다." },
+            { t: "부활했다면 희생이 성립하는가", d: "그리스도는 3일 후에 부활했다. 영구히 상실되지 않았다면 '희생'의 의미가 묻힌다. '무한한 존재의 유한한 고통 = 무한한 가치'라는 반론이 있지만, 그 전제 자체가 검증하기 어렵다." },
+          ].map((x, i) => (
+            <div key={i} style={{ borderLeft: "2px solid #3d3428", paddingLeft: 16, margin: "12px 0" }}>
+              <div style={{ fontSize: 13, color: "#c4a862" }}>{i + 1}. {x.t}</div>
+              <div style={{ fontSize: 12, color: "#7a6d5e", lineHeight: 1.7, marginTop: 4 }}>{x.d}</div>
+            </div>
+          ))}
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>예레미야 17:9 — 자기언급의 역설</div>
+          <Heb text="עָקֹב הַלֵּב מִכֹּל וְאָנֻשׁ הוּא מִי יֵדָעֶנּוּ" />
+          <P>"만물보다 거짓된 것이 마음이라. 그것은 불치이다. 누가 그것을 알 수 있으랴"</P>
+          <Fact num="">히브리어의 לֵב(lev = 마음)은 감정뿐 아니라 의지·사고·판단·동기의 중추를 모두 포함한다.</Fact>
+          <Think num="">이 교의는 다음 구조를 갖는다: (1) '마음은 만물보다 거짓되다' → (2) 성경을 분석하는 마음도 거짓되다 → (3) 분석 결과는 신뢰할 수 없다 → (4) 비판이 무효화된다. 그런데 (5) '마음은 거짓되다'를 옳다고 판단하는 마음도 거짓일 수 있다 → (6) 이 교의 자체가 신뢰할 수 없다. 자기언급에 의해 파탄난다. 게다가 (7) 성경을 쓴 것도 인간의 마음이다 → (8) 성경 자체가 거짓된 마음의 산물일 수 있다.</Think>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>'해석'과 확증편향</div>
+          <P>'성경은 해석과 함께 읽어야 한다'는 말이 있다. 이 주장 자체를 검증한다.</P>
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "16px 0" }}>
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginBottom: 8, letterSpacing: 2 }}>'해석'이 하고 있는 것</div>
+            {[
+              ["교의가 있다", "원죄, 속죄, 부활, 믿음에 의한 구원"],
+              ["본문을 읽는다", ""],
+              ["교의와 일치하는 부분", "→ 그대로 받아들인다"],
+              ["교의와 모순되는 부분", "→ '비유다' '문맥이 다르다' '영적인 의미다'로 재해석"],
+              ["재해석의 결과", "→ 교의가 지지된다"],
+              ["결론", "→ '성경은 교의와 정합한다'"],
+            ].map(([a, b], i) => (
+              <div key={i} style={{ display: "flex", gap: 8, margin: "4px 0", fontSize: 12 }}>
+                <span style={{ color: "#8b7355", minWidth: 160 }}>{a}</span>
+                <span style={{ color: "#7a6d5e" }}>{b}</span>
+              </div>
+            ))}
+          </div>
+          <Compare
+            leftLabel="과학적 방법" leftColor="#4a6741"
+            left="관찰 → 가설 → 검증 → 가설이 맞지 않으면 가설을 수정한다"
+            rightLabel="성경의 해석" rightColor="#a85454"
+            right="교의(결론) → 본문을 읽는다 → 맞지 않으면 본문의 읽는 방식을 바꾼다 → 교의는 수정하지 않는다"
+          />
+          <Think num="">오늘 분석의 구체적 사례: '먹으면 죽는다'→죽지 않았다→해석 '영적인 죽음' (본문에 없음). 뱀의 예고가 실현→해석 '부분적 진실로 유인' (본문에 없음). '우리'→해석 '삼위일체' (4세기 개념을 소급 적용). 교의에 맞지 않는 부분만 '비유'로 처리하는 읽기 방식은, 결론이 먼저 있고 증거를 그 결론에 맞추는 확증편향의 구조를 지닌다.</Think>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>'성경의 과학적 예언' — 확증편향의 실례</div>
+          <P>'성경에는 당시 알 수 없었던 과학 지식이 담겨 있다. 이것은 신의 영감의 증거다'라는 주장이 있다. 하지만 같은 성경 안에 현대 과학과 일치하지 않는 기술도 다수 존재한다.</P>
+          <div style={{ background: "rgba(74,103,65,0.08)", border: "1px solid #2a3520", borderRadius: 6, padding: 16, margin: "12px 0" }}>
+            <div style={{ fontSize: 11, color: "#4a6741", letterSpacing: 2, marginBottom: 10 }}>'과학적 예언'으로 인용되는 기술</div>
+            {[
+              "욥기 26:7 '땅을 허공에 매다시며' — 지구가 우주 공간에 떠 있다",
+              "이사야 40:22 '땅 위 원에 앉으시는 이' — 지구가 둥글다",
+              "전도서 1:7 '모든 강이 바다로 흘러도…강이 흘러가던 곳으로 되돌아간다' — 물의 순환",
+              "욥기 36:27-28 '물방울을 끌어올려…구름에서 비가 내린다' — 증발과 강수",
+              "창세기 7:11 '큰 깊음의 샘이 터지며' — 지하수의 존재",
+              "시편 8:8 '바다의 길' — 해류의 존재 (매슈 모리가 이 구절에서 해류를 연구)",
+              "욥기 38:16 '바다의 샘에 가본 적이 있느냐' — 해저 열수분출공",
+              "레위기 17:11 '육체의 생명은 피에 있다' — 혈액의 중요성",
+              "레위기 13장 감염자 격리 규정 — 검역 개념",
+              "신명기 23:12-13 배설물을 진영 밖에 묻어라 — 공중위생",
+              "민수기 19:11-12 시체를 만진 자는 물로 몸을 씻어라 — 손씻기의 개념",
+              "레위기 15장 체액에 접촉한 자의 세정 — 감염 예방",
+              "창세기 3:15 '여자의 후손' — 여성도 생식의 '씨'를 갖는다 (당시 남성만 갖는다고 여겨짐)",
+              "창세기 2:21 '깊이 잠들게 하시고' — 수술에서의 마취 개념",
+              "창세기 17:12 할례는 생후 8일째 — 비타민K와 응고인자가 8일째 최고치",
+              "욥기 38:19 '빛이 사는 곳에 이르는 길은 어디냐' — 빛은 '길'을 갖는다 (빛은 이동한다)",
+              "히브리서 11:3 '보이는 것은 보이지 않는 것에서 만들어졌다' — 원자의 존재",
+              "이사야 40:22 '하늘을 얇은 천처럼 펼치시며' — 우주의 팽창",
+              "시편 102:25-26 '하늘도…옷처럼 낡아지리라' — 엔트로피 증대",
+              "예레미야 33:22 '하늘의 만상은 셀 수 없다' — 무한한 별의 수",
+            ].map((x, i) => (
+              <div key={i} style={{ fontSize: 12, color: "#8a9b82", lineHeight: 1.6, padding: "4px 0", paddingLeft: 12, borderLeft: "1px solid #2a3520" }}>{x}</div>
+            ))}
+          </div>
+          <div style={{ background: "rgba(168,84,84,0.08)", border: "1px solid #352a2a", borderRadius: 6, padding: 16, margin: "12px 0" }}>
+            <div style={{ fontSize: 11, color: "#a85454", letterSpacing: 2, marginBottom: 10 }}>같은 성경에서 언급되지 않는 기술</div>
+            {[
+              "사무엘상 2:8 '땅의 기둥은 여호와의 것이요, 그 위에 세계를 세우셨다' — 땅이 기둥 위에 놓여 있다",
+              "시편 75:3 '내가 그 기둥을 견고케 하였다' — 땅을 떠받치는 기둥",
+              "시편 104:5 '땅의 기초 위에 세워 영원히 흔들리지 않게 하셨다' — 지구는 움직이지 않는다",
+              "역대상 16:30 '세계가 굳게 서서 흔들리지 않는다' — 지동설과 모순",
+              "여호수아 10:12-13 '해야 기브온 위에 머물러라…해가 멈추었다' — 태양이 지구 주위를 도는 전제",
+              "창세기 1:6-7 '물 사이에 궁창이 있어라…궁창 위의 물과 아래의 물' — 천개가 하늘 위의 물을 떠받치고 있다",
+              "창세기 7:11 '하늘의 창이 열렸다' — 하늘에 창문이 있고 거기서 비가 떨어진다",
+              "욥기 37:18 '구름을 부은 거울처럼 견고하게 하셨는가' — 천개는 금속처럼 단단하다",
+              "욥기 38:22 '눈 창고에 들어간 적이 있느냐. 우박 창고를 본 적이 있느냐' — 눈과 우박은 창고에 저장",
+              "다니엘 4:11 '그 나무가…땅 끝에서도 보였다' — 평평한 땅 전제",
+              "마태 4:8 '매우 높은 산으로 데려가 세상의 모든 나라를 보여주었다' — 평평하지 않으면 모든 나라가 보이지 않는다",
+              "레위기 11:20-23 '네 발로 걷는 날개 달린 곤충' — 곤충은 여섯 다리",
+              "레위기 11:6 '토끼…되새김질을 하되' — 토끼는 반추동물이 아니다",
+              "레위기 11:19 박쥐를 새로 분류",
+              "마태 13:32 '겨자씨는 어떤 씨보다도 작다' — 난초 등 더 작은 씨가 존재",
+              "레위기 14:6-7 '산 새를…피에 담그고…환자에게 일곱 번 뿌려라' — 새의 피로 피부병 치료",
+              "레위기 14:49-53 새의 피와 우슬초로 집의 곰팡이를 정화",
+              "신명기 28:27 '이집트의 종기와 부스럼으로 치리라' — 병은 하나님의 벌",
+              "창세기 30:37-39 야곱이 색깔 있는 가지 앞에서 가축을 교배시켜 줄무늬 새끼를 낳게 했다 — 유전학과 모순되는 주술적 사고",
+              "창세기 1:16 '큰 빛과 작은 빛' — 달은 빛을 내지 않는다(반사할 뿐)",
+              "창세기 1:14-19 식물(3일째) 다음에 태양(4일째)이 만들어졌다 — 광합성 없이 식물은 생존 불가",
+            ].map((x, i) => (
+              <div key={i} style={{ fontSize: 12, color: "#8a6e6e", lineHeight: 1.6, padding: "4px 0", paddingLeft: 12, borderLeft: "1px solid #352a2a" }}>{x}</div>
+            ))}
+          </div>
+          <Think num="">묻고 싶은 것은, 이 두 리스트에서 한쪽만 골라 '성경은 과학적이다'라고 결론짓는 것이 타당한가 하는 점이다. 선택 기준은 '현대 과학과 일치하느냐 여부'이지, 본문의 성질이 아니다. 일치하면 '예언', 일치하지 않으면 '시적 표현' '비유'로 처리된다.</Think>
+          <Q>"해석과 함께 읽어야 한다"는 것은, 본문만으로는 교의를 뒷받침할 수 없다는 것을 인정하는 것이 아닌가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 존재 논증 ===== */}
+        {sec("god_arguments", <>
+          <SH num="11">신의 존재 논증을 검증하다</SH>
+          <P>성경 밖에서도 '신이 있다'는 것을 뒷받침하는 철학적 논증이 있다. 이하는 대표적인 6개의 논증과 그에 대한 나의 검토. 어느 논증에나 옹호하는 철학자가 존재하며 (Swinburne, Craig, Plantinga, Alston 등), 학술적으로 결착 난 논의가 아니라는 점에 유의.</P>
+          {[
+            { title: "목적론적 논증 (미세조정)", claim: "우주의 물리 상수가 생명을 허용하도록 정밀 조정되어 있다. 우연이라고는 생각하기 어렵다. 따라서 설계자(신)의 존재가 추정된다.", response: "생명의 정의를 넓게 잡으면 파라미터 공간이 좁다고 할 수 없게 되어, 설계자를 가정할 근거가 약해진다.", verdict: "생명의 정의에 의존하는 논증이라고 나는 생각한다" },
+            { title: "도덕 논증", claim: "객관적 도덕이 존재한다면, 그 근거가 되는 초월적 입법자(신)가 필요하다.", response: "도덕은 초월적 근거를 필요로 하지 않는다. 협력하는 집단이 생존에 유리했고, 도덕 감각의 원형이 자연 발생했을 가능성이 있다.", verdict: "인과의 방향이 반대일 가능성이 있다" },
+            { title: "존재론적 논증 (안셀무스)", claim: "'그보다 위대한 것을 생각할 수 없는 존재'는 머릿속에만 있으면 안 되고 현실에도 존재해야 한다. 현실에 존재하는 쪽이 더 위대하기 때문이다.", response: "'위대함'의 정의가 자의적이다. 존재·전지·전능·전선을 '위대함'으로 전제하지만, 왜 그 특정 성질의 집합이 위대함을 구성하는지는 정당화되지 않았다. 정의를 바꾸면 결론도 바뀐다.", verdict: "정의에 의존하는 논증이라고 나는 생각한다" },
+            { title: "종교적 경험", claim: "전 세계에서 시대를 초월하여 사람들이 신비 체험을 보고하고 있다. 이처럼 보편적인 경험은 신 존재의 집단적 증거로 볼 수 있다.", response: "인간의 지각은 현실의 충실한 복사본이 아니라 감각기관과 뇌의 처리를 거친 구성물이다. 종교적 경험은 신경과학적으로 재현·설명 가능한 현상이다. 다만 이것은 '종교적 경험이 신의 증거가 되지 않는다'는 것을 보여줄 뿐, '신이 없다'의 적극적 증명은 아니다.", verdict: "증거로서의 힘은 약하지만, 부정할 수도 없다" },
+            { title: "물리법칙의 질서 ('수학의 비합리적 유효성')", claim: "우주가 수학으로 기술 가능한 규칙성을 갖는다는 사실 자체가 놀라운 것이며, 그 질서의 근거로서 신이 필요하지 않은가.", response: "물리법칙은 이상화된 조건 하의 근사에 불과하며, 세계의 참 모습이 아니라 예측을 위한 도구이다. 그 도구의 정밀도가 높은 것은 세계에 맞추어 개량해 온 결과이다. 수학이 유효하게 보이는 것은 유효한 것만 보고 있는 생존 편향일 수 있다.", verdict: "인간 측의 모델 구축 문제로 설명할 수 있다" },
+            { title: "라이프니츠의 물음 ('왜 아무것도 없지 않고 무언가가 있는가')", claim: "존재하는 모든 것에는 충분한 이유가 있어야 한다(충족이유율). 우주 외부에 스스로의 존재 이유를 자신 안에 가진 '필연적 존재' 즉 신이 필요하다.", response: "이 논리는 타당하다고 생각한다. 부정할 근거가 현재로서는 떠오르지 않는다. 다만 그 토대인 충족이유율 자체가 증명 불가능한 공리이다. '모든 것에 충분한 이유가 있다'를 증명하려면 그 증명 자체에 충족이유율을 전제해야 하므로 순환한다.", verdict: "부정할 수 없다. 현재 유효한 반론을 갖고 있지 않다" },
+          ].map((x, i) => (
+            <div key={i} style={{ background: i === 5 ? "rgba(74,103,65,0.08)" : "rgba(0,0,0,0.15)", border: `1px solid ${i === 5 ? "#4a6741" : "#2a2520"}`, borderRadius: 6, padding: 16, margin: "14px 0" }}>
+              <div style={{ fontSize: 14, color: "#e8dcc8", marginBottom: 10 }}>{i + 1}. {x.title}</div>
+              <div style={{ borderLeft: "2px solid #6b8cba", paddingLeft: 14, marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: "#6b8cba", letterSpacing: 2, marginBottom: 4 }}>주장</div>
+                <div style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>{x.claim}</div>
+              </div>
+              <div style={{ borderLeft: `2px solid ${i === 5 ? "#4a6741" : "#8b7355"}`, paddingLeft: 14, marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: i === 5 ? "#4a6741" : "#8b7355", letterSpacing: 2, marginBottom: 4 }}>{i === 5 ? "나의 입장" : "검토"}</div>
+                <div style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>{x.response}</div>
+              </div>
+              <div style={{ fontSize: 11, color: i === 5 ? "#4a6741" : "#6b5d4d", fontStyle: "italic", fontWeight: i === 5 ? 600 : 400 }}>{x.verdict}</div>
+            </div>
+          ))}
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 8, padding: 20, margin: "24px 0" }}>
+            <div style={{ fontSize: 12, color: "#c4a862", letterSpacing: 2, marginBottom: 16 }}>충족이유율은 왜 증명할 수 없는가</div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, margin: "20px 0" }}>
+              {[
+                { text: "주장: '모든 것에는 충분한 이유가 있다'", color: "#c4a862", width: 380 },
+                { text: "↓ 이것을 증명하려면", color: "#6b5d4d", width: 240 },
+                { text: "'이 주장 자체에도 충분한 이유가 있어야 한다'", color: "#6b8cba", width: 380 },
+                { text: "↓ 그 이유를 제시하려면", color: "#6b5d4d", width: 240 },
+                { text: "'모든 것에는 충분한 이유가 있다'를 전제로 사용해야 한다", color: "#a85454", width: 380 },
+                { text: "↓", color: "#6b5d4d", width: 40 },
+                { text: "증명하려는 명제를 증명 속에서 전제하고 있다 = 순환논법", color: "#a85454", width: 380 },
+              ].map((x, i) => (
+                <div key={i} style={{ textAlign: "center", padding: i % 2 === 0 ? "8px 16px" : "4px", fontSize: i % 2 === 0 ? 12 : 11, color: x.color, maxWidth: x.width, lineHeight: 1.6, background: i % 2 === 0 ? "rgba(0,0,0,0.2)" : "transparent", borderRadius: i % 2 === 0 ? 4 : 0, border: i === 6 ? "1px solid #a85454" : "none" }}>{x.text}</div>
+              ))}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "20px 0 0", padding: "16px", background: "rgba(0,0,0,0.15)", borderRadius: 6 }}>
+              <div style={{ fontSize: 12, color: "#6b5d4d", letterSpacing: 2, marginBottom: 4 }}>따라서</div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#4a6741", fontSize: 12, flexShrink: 0 }}>A.</span>
+                <span style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>충족이유율을 받아들인다 → 라이프니츠의 논증은 유효 → 필연적 존재(무언가)가 필요. 다만 이것이 '성경의 신이 존재한다'를 의미하지는 않는다. 인격을 가진 존재인지, 인간에게 관심이 있는지, 기독교의 신인지는 여기서 전혀 도출할 수 없다. 게다가 그 필연적 존재 자체에도 '왜 존재하는가'의 이유가 필요해져 무한히 거슬러 올라간다. '스스로의 존재 이유를 자신 안에 가진다'로 멈추려면, 같은 논리로 '우주가 스스로의 존재 이유를 자신 안에 가진다'로도 멈출 수 있다</span>
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#6b8cba", fontSize: 12, flexShrink: 0 }}>B.</span>
+                <span style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>충족이유율을 받아들이지 않는다 → '이유 없이 존재하는 것'이 있을 수 있다 → 우주 자체가 그것일 수 있다 → 신은 불필요</span>
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#c4a862", fontSize: 12, flexShrink: 0 }}>C.</span>
+                <span style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>충족이유율이 참인지 판정할 방법이 없다 → A와 B 중 어느 쪽이 옳은지 결정 불능</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ background: "rgba(74,103,65,0.1)", border: "1px solid #4a6741", borderRadius: 6, padding: 20, margin: "24px 0" }}>
+            <div style={{ fontSize: 13, color: "#4a6741", marginBottom: 10 }}>여기까지의 검증을 바탕으로</div>
+            <div style={{ fontSize: 13, color: "#c4b8a4", lineHeight: 1.9 }}>
+              6개의 논증을 검증한 결과, 5개는 인간의 인지·정의·구축 프로세스에 의한 사후적 설명이나 생존 편향으로 물리칠 수 있다고 나는 생각했다. 다만 이 5개의 논증에도 옹호하는 철학자가 존재하며, 학술적으로 결착 난 논의가 아니다. 그러나 6번째 라이프니츠의 물음은 물리칠 수 없었다.<br /><br />
+              <strong style={{ color: "#e8dcc8" }}>내가 완강하게 부정하고 있는 것은 신의 존재가 아니라, '신이 있다'에 이르는 논증 과정에 확증편향이 포함되어 있다는 것, 그리고 그 과정의 문제점을 지적하면 '신앙이 부족하다'로 봉쇄당한다는 것입니다.</strong>
+            </div>
+          </div>
+          <Q>6개의 논증 중 5개는 인간 측의 인지 문제로 설명할 수 있다(다만 옹호하는 학자도 있다). 나머지 1개는 부정할 수 없지만, 그 전제 자체가 증명 불가능하다. '신이 있다'를 뒷받침하는 과정은 충분히 입증되어 있다고 말할 수 있는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 왜 믿는가 ===== */}
+        {sec("why_believe", <>
+          <SH num="12">왜 사람은 믿는가</SH>
+          <P>이만큼의 긴장을 포함한 성경을, 왜 전 세계 사람들이 믿고 있는가.</P>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "16px 0 8px" }}>신앙의 인지적 기반</div>
+          <P>서로 접촉이 없는 전 세계 문화에서 독립적으로 종교가 발생하고 있다. 왜인가. 이하는 인지과학·진화심리학의 지견과, 거기서 이끌어 낸 고찰을 조합한 경로이다.</P>
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 8, padding: 20, margin: "20px 0" }}>
+            {[
+              { step: "0", title: "왜 생존하려 하는가", desc: "생존하려는 개체가 반드시 남는 건 아니다. 하지만 하려는 개체가 하지 않는 개체보다 남을 확률이 높다. 그 확률 차이가 수십억 년 축적된 결과, 현존하는 모든 생물은 '생존하려는' 성질을 갖고 있다.", sub: "생존 본능은 '목적'이 아니라 '결과'이다. 하려고 했기 때문에 반드시 남는 게 아니다. 하려고 하지 않은 것보다 남기 쉬웠을 뿐이다. 그리고 남지 못한 것은 보이지 않는다.", color: "#4a6741", tag: "진화생물학의 기초" },
+              { step: "1", title: "인과 탐지의 과잉", desc: "'풀이 움직였다 → 호랑이가 있을지 모른다'고 판단하는 개체가 '우연이다'로 판단하는 개체보다 생존율이 높다.", sub: "호랑이가 없어도 반응하는 비용(빈 반응) ＜ 호랑이가 있는데 반응하지 않는 비용(죽음). 그래서 인과 탐지는 과잉인 방향으로 진화했다.", color: "#4a6741", tag: "인지과학에서 확립" },
+              { step: "2", title: "행위자 탐지 편향 (HADD)", desc: "인과의 원인으로 '의도를 가진 존재'를 가정하는 경향. 밤의 물소리를 '누군가 있다'고 느끼는 것은, 없는 경우의 빈 반응보다 있는데 눈치 못 채는 경우의 피해가 크기 때문.", sub: "HADD(과민한 행위자 탐지 장치) — Justin Barrett이 명명. 종교의 인지과학의 핵심 개념.", color: "#4a6741", tag: "Barrett (2000)에서 확립" },
+              { step: "3", title: "보이지 않는 존재의 가정", desc: "원인을 알 수 없는 사건(번개, 질병, 죽음, 행운)에 대해 보이지 않는 행위자의 의도를 귀속시킨다. '왜 번개가 쳤을까' → '누군가 화가 났다'.", sub: "원인이 없는 사건을 받아들이기보다, 보이지 않는 원인을 가정하는 쪽이 뇌에게는 안정적이다.", color: "#4a6741", tag: "Barrett, Boyer의 연구" },
+              { step: "4", title: "초월적 존재의 개념화", desc: "보이지 않는 행위자에 인격·의도·감정을 부여하고 체계화한다. 정령, 조상령, 신. 인간이 이해하기 쉬운 '인격'의 형태로 정리된다.", sub: "인간의 뇌는 '마음이론'(타인의 의도를 추측하는 능력)을 가진다. 이것이 보이지 않는 존재에도 적용된다. Boyer 『Religion Explained』, Guthrie 『Faces in the Clouds』.", color: "#4a6741", tag: "인지과학에서 확립" },
+              { step: "5", title: "이야기화", desc: "초월적 존재의 행동·의도·명령을 이야기로 구성한다. 창조신화, 타락과 구원, 내세.", sub: "이야기는 기억하기 쉽고 전달하기 쉽다. 이야기를 갖지 않는 신앙 체계는 도태된다는 주장은 문화진화론의 틀 안에서 논의되고 있지만, 합의에는 이르지 않았다.", color: "#6b8cba", tag: "학술적으로 논의 중" },
+              { step: "6", title: "공동체의 형성", desc: "공통의 이야기를 믿는 집단이 형성된다. 공통의 신앙은 협력을 촉진하고 배신을 억제한다. 집단의 생존율이 올라간다.", sub: "D.S. Wilson 『Darwin's Cathedral』, Norenzayan 『Big Gods』에 기초한 '종교 = 집단적응' 가설. 유력하지만 반론도 많다.", color: "#6b8cba", tag: "학술적으로 논의 중" },
+              { step: "7", title: "제도화와 자기 강화", desc: "이야기를 관리하는 전문가(사제, 목사)가 태어나고, 조직(교회)이 형성된다. 교의를 체계화하고 비판을 봉쇄하고 이탈을 어렵게 만드는 구조가 정비된다.", sub: "이 단계에서 신앙은 개인의 인지에서 사회적 제도로 전환된다. 제도는 자기 유지 메커니즘을 갖추고, 원래의 인지적 기원과는 독립적으로 존속한다.", color: "#a85454", tag: "나의 고찰" },
+            ].map((x, i, arr) => (
+              <div key={i} style={{ display: "flex", gap: 16, marginBottom: i < arr.length - 1 ? 4 : 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", border: `1.5px solid ${x.color}`, background: `${x.color}10`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: x.color, fontFamily: "monospace" }}>{x.step}</div>
+                  {i < arr.length - 1 && <div style={{ width: 1, height: 20, background: "#2a2520" }} />}
+                </div>
+                <div style={{ paddingBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, color: "#e8dcc8" }}>{x.title}</span>
+                    <span style={{ fontSize: 10, color: x.color, background: `${x.color}15`, padding: "1px 6px", borderRadius: 3 }}>{x.tag}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>{x.desc}</div>
+                  {x.sub && <div style={{ fontSize: 11, color: "#6b5d4d", marginTop: 6, lineHeight: 1.6 }}>{x.sub}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "16px 0" }}>
+            <div style={{ fontSize: 12, color: "#8b7355", marginBottom: 8, letterSpacing: 2 }}>고찰: 수렴진화의 비유</div>
+            <Compare
+              leftLabel="생물의 수렴진화" leftColor="#4a6741"
+              left="돌고래(포유류)와 물고기는 비슷한 유선형 체형을 갖고 있다. 같은 창조자가 있어서가 아니라, 같은 환경(수중)에 적응한 결과."
+              rightLabel="신앙의 보편성" rightColor="#c4a862"
+              right="전 세계 문화에 종교가 있다. 같은 신이 있어서가 아니라, 같은 인지 구조(인간의 뇌)가 같은 환경(불확실한 세계)에 적응한 결과일 수 있다."
+            />
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 8, lineHeight: 1.7 }}>
+              이 설명이 옳은지는 확정할 수 없다. 그러나 신앙의 보편성으로부터 '그러니까 신은 존재한다'고 결론짓는 것은, 돌고래와 물고기가 닮았으니까 '그러니까 같은 종이다'라고 결론짓는 것과 같은 구조의 오류일 가능성이 있다.
+            </div>
+          </div>
+
+          <Q>세계 각지에서 독립적으로 종교가 태어난 것은, 공통된 신이 존재하기 때문인가, 공통된 인간의 뇌가 존재하기 때문인가. 전자라면, 왜 각지의 종교 내용이 이토록 다른가. 후자라면, 신앙의 존재는 신의 존재에 대해 아무것도 말해주지 않는 것이 되는데, 그래도 신앙에는 의미가 있는가.</Q>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>학술 데이터</div>
+          <P>'성경의 모순을 눈치채지 못하는 것은 생각하지 않아서'인가, '생각한 끝에 믿고 있는 것'인가. 아래 데이터는 그 경향을 시사한다.</P>
+          <Fact num="">두 개의 서로 다른 조사(Gross & Simmons 2009, Larson & Witham 1998)에 따르면, 학문적으로 상위에 갈수록 무신론·불가지론의 비율이 높아지는 경향이 있다. 다만 두 조사는 질문 형식·모집단이 다르므로 수치의 직접 비교에는 주의가 필요하다(하단 참조).</Fact>
+          <div style={{ display: "flex", gap: 16, margin: "12px 0 8px", fontSize: 11 }}>
+            <span style={{ color: "#a85454" }}>■ 무신론 (신은 없다)</span>
+            <span style={{ color: "#6b4040" }}>■ 불가지론 (모른다)</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "6px 16px", margin: "12px 0", fontSize: 12, alignItems: "center" }}>
+            {[
+              { label: "일반 미국인", atheist: 3, agnostic: 4, total: "~7.1%" },
+              { label: "대학 교수 전체", atheist: 9.8, agnostic: 13.1, total: "22.9%" },
+              { label: "엘리트 대학 교수", atheist: null, agnostic: null, total: "36.6%" },
+              { label: "생물학자", atheist: 27.5, agnostic: 33.3, total: "60.8%" },
+              { label: "심리학자", atheist: 50, agnostic: 10.9, total: "60.9%" },
+              { label: "미국 과학 아카데미 (NAS)", atheist: 72.2, agnostic: 20.8, total: "93.0%" },
+            ].map((x, i) => (
+              <React.Fragment key={i}>
+                <span style={{ color: "#6b5d4d", textAlign: "right" }}>{x.label}</span>
+                <div style={{ background: "#1a1714", borderRadius: 4, height: 18, position: "relative", display: "flex" }}>
+                  {x.atheist !== null ? (<>
+                    <div style={{ background: "#a85454", height: "100%", borderRadius: "4px 0 0 4px", width: `${x.atheist}%` }} />
+                    <div style={{ background: "#6b4040", height: "100%", borderRadius: "0 4px 4px 0", width: `${x.agnostic}%` }} />
+                  </>) : (
+                    <div style={{ background: "linear-gradient(90deg, #a85454, #6b4040)", height: "100%", borderRadius: 4, width: `${parseFloat(x.total)}%`, opacity: 0.7 }} />
+                  )}
+                </div>
+                <span style={{ color: "#a89880", fontSize: 11 }}>{x.total}</span>
+              </React.Fragment>
+            ))}
+          </div>
+          <div style={{ background: "rgba(0,0,0,0.15)", borderRadius: 6, padding: 14, margin: "12px 0" }}>
+            <div style={{ fontSize: 11, color: "#6b5d4d", lineHeight: 1.8 }}>
+              <strong style={{ color: "#8b7355" }}>출처1:</strong> Gross, N. & Simmons, S. (2009). <em>Sociology of Religion</em>, 70(2), 101-129. (<a href="https://doi.org/10.1093/socrel/srp026" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi</a>)<br />
+              <strong style={{ color: "#8b7355" }}>출처2:</strong> Larson, E.J. & Witham, L. (1998). <em>Nature</em>, 394, 313. (<a href="https://doi.org/10.1038/28478" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi</a>)<br /><br />
+              <strong style={{ color: "#a85454" }}>두 조사의 차이:</strong> 질문 형식(6단계 vs 3택), '무신론'의 정의, 모집단(전 분야 교수 vs 자연과학자)이 서로 다르다.
+            </div>
+          </div>
+          <Think num="">이 데이터는 '학문 = 옳다'를 주장하는 것이 아니다. 그러나 텍스트를 비판적으로 읽는 훈련을 쌓은 사람일수록, 성경의 주장을 문자 그대로 받아들이지 않는 경향이 있음을 시사하고 있다. 신앙은 지식의 부족만으로 설명할 수 없지만(엘리트 대학에도 신앙인은 있다), 비판적 사고와 신앙 사이에 긴장이 있다는 것은 데이터가 뒷받침하고 있다.</Think>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>신앙이 유지되는 구조</div>
+          {[
+            { t: "반증 불가능", d: "어떤 결과든 교의를 보강한다 (제10장 참조)" },
+            { t: "감정적·사회적 기능", d: "죽음의 공포 완화, 불조리에 대한 설명, 공동체 형성, 도덕적 틀, 삶의 의미. 논리적 정합성과는 독립적으로 작용" },
+            { t: "이탈 비용", d: "어린 시절부터의 각인, 교회 = 사회적 네트워크, '믿지 않으면 지옥'이라는 공포" },
+            { t: "확증편향", d: "신앙을 뒷받침하는 정보에 주목, 모순되는 정보는 경시. 교의에 맞지 않는 부분은 '비유'로 처리 (제10장 참조)" },
+            { t: "원문을 읽지 않는다", d: "대다수는 번역으로, 목사가 고른 부분만 읽는다. 에스겔과 로마서를 나란히 놓고 비교하는 사람은 거의 없다" },
+          ].map((x, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, margin: "8px 0", fontSize: 12 }}>
+              <span style={{ color: "#8b7355", minWidth: 120, flexShrink: 0 }}>{x.t}</span>
+              <span style={{ color: "#7a6d5e" }}>{x.d}</span>
+            </div>
+          ))}
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>'전부 읽으면 안다'</div>
+          <Think num="2">'전부 읽으면 안다'가 정말이라면, 전부 읽은 사람들 사이에서 해석이 일치해야 한다. 그러나 현실에서는 수만 개의 교파로 분열되어 있다. 전부 읽은 교부들 사이에서도 영지주의파와 정통파로 갈라졌다. 전부 읽은 루터는 가톨릭에서 분리했다.</Think>
+          <Think num="3">게다가 '전부'란 교회가 선별한 정경만을 가리킨다. 배제된 수십 편의 문서는 '전부'에 포함되어 있지 않다. 교회가 설정한 '전부'를 읽고 교회의 교의에 도달하는 것은, 교회가 설계한 독서 코스를 완주하는 것과 같은 구조로 보인다.</Think>
+          <Q>'전부 읽으면 안다'의 '전부'에, 교회가 배제한 수십 편의 문서는 포함되어 있는가. 교회가 설계한 '전부'를 읽고 교회의 교의에 도달하는 것은 무엇을 의미하는가.</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== 물음 ===== */}
+        {sec("questions", <>
+          <SH>당신에게 묻습니다</SH>
+          <P>여기에 제시한 것은 사실과 고찰과 물음입니다. 사실은 텍스트에서 확인할 수 있습니다. 고찰은 나의 추론입니다. 그것을 어떻게 받아들일지는 여러분이 결정할 일입니다.</P>
+          {[
+            "선악을 판단할 능력이 없는 존재의 행위를 '죄'라 부를 수 있는가. 죄의 인식은 죄 이후에야 올 수 있다면, 원죄의 전제는 성립하는가.",
+            "뱀의 예고는 본문상 실현되었다. 신은 뱀에 대한 벌의 이유를 명시하지 않았다. 뱀은 무엇에 대해 벌을 받은 것인가.",
+            "에스겔 18:20에서 야훼가 가장 무거운 맹세 위에 '아들이 아버지의 죄를 짊어지지 않는다'고 말했다. 바울의 '아담의 죄가 전 인류에게 미친다'와 어떻게 정합하는가.",
+            "로마서 5:12의 그리스어 ἐφ' ᾧ는 '각자가 죄를 지었으므로'로 읽는 것이 문법적으로 자연스럽다. 불가타는 in quo(아담 안에서)로 번역했고, 이 번역이 원죄 교리의 형성에 크게 기여했다. 그리스어를 읽을 수 있는 동방교회가 이 교리를 공유하지 않는 사실을 어떻게 생각하는가.",
+            "창세기 원문에 '죄'라는 단어가 없는 사건이, 약 1000년과 하나의 번역상의 선택을 거쳐 전 인류의 교리가 되었다. 이 과정은 무엇을 의미하는가.",
+            "초기 기독교에는 영지주의라는 전혀 다른 독법이 있었다. 정통파는 그에 대항하여 교의를 구축하고 영지주의 문서를 분서했다. '전부 읽으면 안다'의 '전부'에 배제된 문서는 포함되어 있는가.",
+            "도마복음과 정경은 독립된 별도 계통의 전승이지만, 공통 부분이 있다. 그 공통 부분에 원죄·속죄·부활은 포함되어 있지 않다. 이것은 무엇을 시사하는가.",
+            "성경에는 비판을 봉쇄하는 구조가 체계적으로 포함되어 있다. 이 구조는 지적 탐구와 양립하는가.",
+            "'해석과 함께 읽어야 한다'는 것은, 본문만으로는 교의를 뒷받침할 수 없다는 것을 인정하는 것이 아닌가. 교의에 맞지 않는 부분만 '비유'로 처리하는 읽기 방식은 확증편향이 아닌가.",
+          ].map((q, i) => (
+            <div key={i} style={{ borderLeft: "2px solid #3d3428", paddingLeft: 20, margin: "16px 0" }}>
+              <span style={{ fontSize: 11, color: "#6b5d4d", marginRight: 8 }}>{i + 1}.</span>
+              <span style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.8 }}>{q}</span>
+            </div>
+          ))}
+        </>)}
+
+        <div style={{ margin: "48px 0", padding: 24, borderTop: "1px solid #1e1b17" }}>
+          <div style={{ fontSize: 12, color: "#6b5d4d", letterSpacing: 2, marginBottom: 16, textAlign: "center" }}>출처 및 참고문헌</div>
+          <div style={{ fontSize: 11, color: "#4a4035", lineHeight: 2.0, maxWidth: 600, margin: "0 auto" }}>
+            <div style={{ color: "#6b5d4d", marginBottom: 4 }}>성경 원문</div>
+            히브리어: BHS (Biblia Hebraica Stuttgartensia) — 온라인: <a href="https://www.sefaria.org/" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>Sefaria</a>, <a href="https://biblehub.com/interlinear/" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>BibleHub Interlinear</a><br />
+            그리스어: NA28 (Nestle-Aland 28th edition)<br /><br />
+
+            <div style={{ color: "#6b5d4d", marginBottom: 4 }}>외경·배제 문서</div>
+            The Nag Hammadi Library in English (J. M. Robinson ed., 1990) — 온라인 전문: <a href="http://www.gnosis.org/naghamm/nhl.html" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>gnosis.org</a><br /><br />
+
+            <div style={{ color: "#6b5d4d", marginBottom: 4 }}>학술 데이터 (제12장)</div>
+            Gross, N. & Simmons, S. (2009). <em>Sociology of Religion</em>, 70(2), 101-129. <a href="https://doi.org/10.1093/socrel/srp026" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1093/socrel/srp026</a><br />
+            Larson, E.J. & Witham, L. (1998). <em>Nature</em>, 394, 313. <a href="https://doi.org/10.1038/28478" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1038/28478</a><br /><br />
+
+            <div style={{ color: "#6b5d4d", marginBottom: 4 }}>인지과학·종교의 진화 (제12장)</div>
+            Barrett, J.L. (2000). "Exploring the Natural Foundations of Religion." <em>Trends in Cognitive Sciences</em>, 4(1), 29-34. <a href="https://doi.org/10.1016/S1364-6613(99)01419-9" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1016/S1364-6613(99)01419-9</a><br />
+            Boyer, P. (2001). <em>Religion Explained: The Evolutionary Origins of Religious Thought</em>. Basic Books.<br />
+            Guthrie, S. (1993). <em>Faces in the Clouds: A New Theory of Religion</em>. Oxford University Press.<br />
+            Wilson, D.S. (2002). <em>Darwin's Cathedral: Evolution, Religion, and the Nature of Society</em>. University of Chicago Press.<br />
+            Norenzayan, A. (2013). <em>Big Gods: How Religion Transformed Cooperation and Conflict</em>. Princeton University Press.<br /><br />
+
+            <div style={{ color: "#6b5d4d", marginBottom: 4 }}>신의 존재 논증 옹호자 (제11장)</div>
+            Swinburne, R. (2004). <em>The Existence of God</em> (2nd ed.). Oxford University Press.<br />
+            Craig, W.L. (2008). <em>Reasonable Faith</em> (3rd ed.). Crossway.<br />
+            Plantinga, A. (1974). <em>The Nature of Necessity</em>. Oxford University Press. (존재론적 논증의 재구성)<br />
+            Alston, W.P. (1991). <em>Perceiving God: The Epistemology of Religious Experience</em>. Cornell University Press.<br /><br />
+
+            <div style={{ color: "#6b5d4d", marginBottom: 4 }}>정경 형성 (제8장)</div>
+            에이레나이오스 '이단 반박' — <a href="https://www.britannica.com/biography/Saint-Irenaeus" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>브리태니커 백과사전</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+
+ReactDOM.render(<App />, document.getElementById("root"));
+</script>
+</body>
+</html>

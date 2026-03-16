@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>聖書を読んで考えたこと</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0f0d0a; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const SECTIONS_I18N = {
+  ja: [
+    { id: "prologue", label: "序" },
+    { id: "two_creations", label: "二つの創造" },
+    { id: "three_voices", label: "三つの声" },
+    { id: "serpent", label: "蛇の真実" },
+    { id: "eden", label: "エデンの設計" },
+    { id: "we", label: "われわれ" },
+    { id: "original_sin", label: "原罪の系譜" },
+    { id: "tensions", label: "内部の緊張" },
+    { id: "canon", label: "正典の選별" },
+    { id: "thomas", label: "もう一つの声" },
+    { id: "structure", label: "構造" },
+    { id: "god_arguments", label: "存在論証" },
+    { id: "why_believe", label: "なぜ信じるか" },
+    { id: "questions", label: "問い" },
+  ],
+  ko: [
+    { id: "prologue", label: "서문" },
+    { id: "two_creations", label: "두 개의 창조" },
+    { id: "three_voices", label: "세 목소리" },
+    { id: "serpent", label: "뱀의 진실" },
+    { id: "eden", label: "에덴의 설계" },
+    { id: "we", label: "우리" },
+    { id: "original_sin", label: "원죄의 계보" },
+    { id: "tensions", label: "내부의 긴장" },
+    { id: "canon", label: "정경의 선별" },
+    { id: "thomas", label: "또 하나의 목소리" },
+    { id: "structure", label: "구조" },
+    { id: "god_arguments", label: "존재 논증" },
+    { id: "why_believe", label: "왜 믿는가" },
+    { id: "questions", label: "물음" },
+  ],
+};
+
+const UI = {
+  ja: { fact: "事実", think: "考察", question: "問い", sources: "出典・参考文献" },
+  ko: { fact: "사실", think: "고찰", question: "물음", sources: "출처 및 참고문헌" },
+};
+
+const Q = ({ children }) => (
+  <div style={{ border: "1px solid #3d3428", background: "rgba(139,115,85,0.06)", padding: "16px 20px", margin: "24px 0", borderRadius: 6 }}>
+    <div style={{ fontSize: 11, color: "#8b7355", letterSpacing: 3, marginBottom: 6 }}>問い</div>
+    <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.8 }}>{children}</div>
+  </div>
+);
+
+const Heb = ({ text, note }) => (
+  <div style={{ direction: "rtl", textAlign: "right", fontSize: 22, color: "#d4c8b0", margin: "12px 0", lineHeight: 1.6, fontFamily: "'Noto Serif Hebrew', 'David Libre', serif" }}>
+    {text}
+    {note && <div style={{ direction: "ltr", textAlign: "left", fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>{note}</div>}
+  </div>
+);
+
+const Verse = ({ ref: r, text, annotations, accent }) => (
+  <div style={{ borderLeft: `2px solid ${accent || "#3d3428"}`, paddingLeft: 20, margin: "16px 0" }}>
+    <div style={{ fontSize: 11, color: "#6b5d4d", letterSpacing: 2, marginBottom: 6 }}>{r}</div>
+    <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.8 }}>{text}</div>
+    {annotations && annotations.map((a, i) => (
+      <div key={i} style={{ fontSize: 12, color: "#7a6d5e", marginTop: 4, paddingLeft: 12, borderLeft: "1px solid #2a2520" }}>{a}</div>
+    ))}
+  </div>
+);
+
+const GLOSSARY_I18N = {
+  ja: {
+    "エロヒム": "ヘブライ語で「神」。文法的には複数形だが、単数の動詞と組み合わされることが多い",
+    "ヤハウェ": "旧約聖書の神の固有名。ヘブライ語の四文字 יהוה（YHWH）の推定読み",
+    "コホータティブ": "ヘブライ語の動詞活用形の一つ。「〜しよう」という意志・勧誘を表す1人称の形",
+    "不定詞絶対形": "ヘブライ語で動詞の意味を最大に強調する文法形式。定動詞の前に同じ語根の不定詞を置く",
+    "P資料": "祭司資料（Priestly source）。文書仮説で、創世記1章などを書いたとされる祭司集団の伝承",
+    "J資料": "ヤハウェ資料（Jahwist source）。文書仮説で、創世記2-3章などを書いたとされる伝承。神をヤハウェと呼ぶ",
+    "文書仮説": "モーセ五書が単一著者ではなく、複数の文書（J, E, D, P）が編集されてできたとする仮説。19世紀にヴェルハウゼンが体系化",
+    "ウルガタ": "4世紀末にヒエロニムスがラテン語に翻訳した聖書。カトリック教会の公式聖書として1000年以上使用された",
+    "ヒエロニムス": "347-420年。ウルガタ（ラテン語訳聖書）の翻訳者。ギリシャ語の ἐφ' ᾧ を in quo と訳した",
+    "グノーシス派": "2-3世紀のキリスト教の一派。「知識（グノーシス）」による救済を主張し、正統派とは全く異なる創世記の読み方をした",
+    "ナグ・ハマディ": "1945年にエジプトで発見された52のグノーシス派文書群。4世紀の弾圧を逃れて隠されていた",
+    "充足理由律": "「存在するものにはすべて十分な理由がなければならない」というライプニッツの原理。証明不可能な公理",
+    "確証バイアス": "自分の既存の信念を支持する情報に注目し、矛盾する情報を軽視する認知的傾向",
+    "HADD": "Hypersensitive Agency Detection Device（過敏なエージェント検出装置）。Justin Barrettが命名した認知メカニズム",
+    "エージェント検出バイアス": "出来事の原因として「意図を持った存在」を仮定しやすい認知的傾向。生存に有利なため進化した",
+    "反証不可能": "どんな証拠が出てもその主張を否定できない構造。カール・ポパーはこれを科学と非科学の境界とした",
+    "原罪": "アダムの罪が全人類に遺伝するという教理。4世紀末にアウグスティヌスが体系化。西方教会の教理であり、東方教会は共有しない",
+    "贖罪": "キリストの死によって人間の罪が償われるという教理。その仕組み（なぜ代価が必要か）については複数の理論がある",
+    "ἐφ' ᾧ": "ギリシャ語の前置詞ἐπί＋関係代名詞ᾧの縮約形。「〜したので」が文法的に自然な読み",
+    "in quo": "ラテン語で「彼において」。ウルガタ訳でἐφ' ᾧをこう訳し、原罪教理の根拠になった",
+    "トマス福音書": "114の語録からなるイエスの言葉集。物語・奇跡・十字架・復活がない。1945年ナグ・ハマディで発見",
+    "心の理論": "他者の心の状態（信念・意図・感情）を推測する認知能力。4-5歳頃に発達する",
+    "ラキア": "ヘブライ語 רָקִיעַ。創世記1章の「大空」。元の意味は「打ち延ばしたもの」で、固い天蓋を示唆する",
+    "天蓋": "古代近東の宇宙観で、空に固い蓋（ラキア）があり、その上に水があると考えられていた。創世記1:6-7に記述",
+    "ペラギウス": "4-5世紀の神学者。人間は罪に勝てると主張し、アウグスティヌスの原罪論に反対。418年に異端とされた",
+    "アウグスティヌス": "354-430年。西方教会最大の教父。原罪の教理を体系化。ウルガタのin quoの読みに依拠した",
+    "エイレナイオス": "130-202年頃。リヨンの司教。『異端反駁』でグノーシス派を批判し、正典・信条の発展に影響を与えた",
+    "三位一体": "父（神）・子（キリスト）・聖霊が一つの神の三つの位格であるという教理。325年ニカイア公会議で公式化",
+    "ニカイア公会議": "325年に開催されたキリスト教初の公会議。三位一体の教理を確立したニカイア信条を採択",
+    "正典": "教会が公式に認めた聖書の文書リスト。新約27書は367年アタナシオスの書簡で初めて列挙された",
+    "外典": "正典に含まれなかった文書。異端的とされ焚書された文書も含む",
+    "ファインチューニング": "宇宙の物理定数が生命を許容するように精密に調整されているという主張。目的論的論証の根拠",
+    "循環論法": "証明したい命題を前提として使う論理的誤り。A→B→Aの構造",
+    "peccatum originale": "ラテン語で「原罪」。アウグスティヌスが体系化した用語",
+    "教義": "宗教の公式な教え。教会が「これが正しい」と定めた信仰の内容",
+    "教理": "教義とほぼ同義。特に教会会議で公式に決定された教えを指すことが多い",
+    "論証": "ある主張が正しいことを、根拠を示して筋道立てて示すこと",
+    "正統派": "教会が「正しい」と認めた立場。グノーシス派などの「異端」と対比される",
+    "比喩": "たとえ。ある物事を別の物事に置き換えて表現すること",
+    "焚書": "書物を燃やして破壊すること。4世紀以降、教会はグノーシス派の文書を組織的に焚書した",
+    "異端": "教会が「正しくない」と判定した教え。異端とされると弾圧・破門の対象になった",
+    "擁護": "ある主張や立場を支持し、守ること",
+    "超越的": "人間の経験や物質世界を超えた存在・性質",
+    "公理": "証明なしに正しいと受け入れる前提",
+    "命題": "真か偽かを判定できる主張・文",
+    "前提": "議論の出発点として受け入れる主張",
+    "咎": "つみ、とが。罪や過ちのこと",
+    "宣誓": "神や自らの存在に懸けて誓うこと",
+    "恣意的": "客観的な基準なく、自分の好みで決めること",
+    "淘汰": "適さないものが除かれ、適したものだけが残ること",
+    "遡及": "過去にさかのぼって適用すること",
+    "断罪": "罪があると公式に宣告すること",
+    "教父": "初期キリスト教の指導的神学者",
+    "霊感": "神が聖書の著者に働きかけて書かせたという教理",
+    "贖い": "あがない。罪の代償を支払って赦しを得ること",
+    "構文": "文の組み立て方",
+    "弾圧": "権力によって思想・活動を押さえつけること",
+    "自己言及": "自分自身について言及すること。矛盾が生じうる",
+    "収斂進化": "異なる祖先の生物が似た環境で似た形質を独立に獲得すること",
+    "確証バイアス": "自分の既存の信念を支持する情報に注目し、矛盾する情報を軽視する認知的傾向",
+    "福音書": "イエスの生涯と教えを記した文書。正典には4つが含まれる",
+    "東方教会": "コンスタンティノープルを中心に発展したキリスト教。ギリシャ語聖書を使用",
+    "西方教会": "ローマを中心に発展したキリスト教。ラテン語ウルガタを使用",
+  },
+  ko: {
+    "엘로힘": "히브리어로 '신(하나님)'. 문법적으로는 복수형이지만, 단수 동사와 결합되는 경우가 많다",
+    "야훼": "구약성경에 나오는 신의 고유 이름. 히브리어 네 글자 יהוה(YHWH)의 추정 발음",
+    "코호르타티브": "히브리어 동사 활용형의 하나. '~하자'라는 의지·권유를 나타내는 1인칭 형태",
+    "부정사 절대형": "히브리어에서 동사의 의미를 최대로 강조하는 문법 형식. 정동사 앞에 같은 어근의 부정사를 배치",
+    "P자료": "제사장 자료(Priestly source). 문서가설에서 창세기 1장 등을 쓴 것으로 추정되는 제사장 집단의 전승",
+    "J자료": "야훼 자료(Jahwist source). 문서가설에서 창세기 2-3장 등을 쓴 것으로 추정되는 전승. 신을 야훼라고 부른다",
+    "문서가설": "모세오경이 단일 저자가 아니라 여러 문서(J, E, D, P)가 편집되어 만들어졌다는 가설. 19세기 벨하우젠이 체계화",
+    "불가타": "4세기 말 히에로니무스가 라틴어로 번역한 성경. 가톨릭교회의 공식 성경으로 1000년 이상 사용",
+    "히에로니무스": "347-420년. 불가타(라틴어 역 성경)의 번역자. 그리스어 ἐφ' ᾧ를 in quo로 번역했다",
+    "영지주의": "2-3세기 기독교의 한 분파. '지식(그노시스)'에 의한 구원을 주장하며, 정통파와는 전혀 다른 창세기 해석을 했다",
+    "나그함마디": "1945년 이집트에서 발견된 52편의 영지주의 문서군. 4세기의 탄압을 피해 숨겨져 있었다",
+    "충족이유율": "'존재하는 모든 것에는 충분한 이유가 있어야 한다'는 라이프니츠의 원리. 증명 불가능한 공리",
+    "확증편향": "자신의 기존 신념을 뒷받침하는 정보에 주목하고, 모순되는 정보는 경시하는 인지적 경향",
+    "HADD": "Hypersensitive Agency Detection Device(과민한 행위자 탐지 장치). Justin Barrett이 명명한 인지 메커니즘",
+    "행위자 탐지 편향": "사건의 원인으로 '의도를 가진 존재'를 가정하기 쉬운 인지적 경향. 생존에 유리하여 진화했다",
+    "반증 불가능": "어떤 증거가 나와도 그 주장을 부정할 수 없는 구조. 칼 포퍼는 이것을 과학과 비과학의 경계로 삼았다",
+    "원죄": "아담의 죄가 전 인류에게 유전된다는 교리. 4세기 말 아우구스티누스가 체계화. 서방교회의 교리이며 동방교회는 공유하지 않는다",
+    "속죄": "그리스도의 죽음으로 인간의 죄가 갚아진다는 교리",
+    "ἐφ' ᾧ": "그리스어 전치사 ἐπί + 관계대명사 ᾧ의 축약형. '~했으므로'가 문법적으로 자연스러운 독법",
+    "in quo": "라틴어로 '그(아담) 안에서'. 불가타 역에서 ἐφ' ᾧ를 이렇게 번역하여 원죄 교리의 근거가 되었다",
+    "도마복음": "114개의 어록으로 이루어진 예수의 말씀 모음. 서사·기적·십자가·부활이 없다. 1945년 나그함마디에서 발견",
+    "마음이론": "타인의 마음 상태(신념·의도·감정)를 추측하는 인지 능력. 4-5세쯤 발달한다",
+    "라키아": "히브리어 רָקִיעַ. 창세기 1장의 '궁창'. 원래 뜻은 '두드려 편 것'으로, 단단한 천개를 시사",
+    "천개": "고대 근동의 우주관에서 하늘에 단단한 덮개가 있고 그 위에 물이 있다고 여겨졌다. 창세기 1:6-7에 기술",
+    "펠라기우스": "4-5세기의 신학자. 인간은 죄를 이길 수 있다고 주장하며 아우구스티누스의 원죄론에 반대. 418년 이단으로 선고",
+    "아우구스티누스": "354-430년. 서방교회 최대의 교부. 원죄 교리를 체계화. 불가타의 in quo 독법에 의거했다",
+    "에이레나이오스": "130-202년경. 리옹의 주교. '이단 반박'에서 영지주의를 비판하고 정경·신조의 발전에 영향을 미쳤다",
+    "삼위일체": "아버지(하나님)·아들(그리스도)·성령이 하나의 신의 세 위격이라는 교리. 325년 니케아 공의회에서 공식화",
+    "니케아 공의회": "325년에 개최된 기독교 최초의 공의회. 삼위일체 교리를 확립한 니케아 신경을 채택",
+    "정경": "교회가 공식적으로 인정한 성경의 문서 목록. 신약 27권은 367년 아타나시우스의 서한에서 처음 열거",
+    "외경": "정경에 포함되지 않은 문서. 이단적이라 하여 분서된 문서도 포함",
+    "미세조정": "우주의 물리 상수가 생명을 허용하도록 정밀하게 조정되어 있다는 주장. 목적론적 논증의 근거",
+    "순환논법": "증명하려는 명제를 전제로 사용하는 논리적 오류. A→B→A의 구조",
+    "peccatum originale": "라틴어로 '원죄'. 아우구스티누스가 체계화한 용어",
+    "교의": "종교의 공식적인 가르침. 교회가 '이것이 옳다'고 정한 신앙의 내용",
+    "교리": "교의와 거의 동의어. 특히 공의회에서 공식 결정된 가르침을 가리키는 경우가 많다",
+    "논증": "어떤 주장이 옳다는 것을 근거를 들어 논리적으로 보이는 것",
+    "정통파": "교회가 '올바르다'고 인정한 입장. 영지주의 등의 '이단'과 대비된다",
+    "비유": "비유. 어떤 것을 다른 것에 빗대어 표현하는 것",
+    "분서": "책을 불태워 파괴하는 것. 4세기 이후 교회는 영지주의 문서를 조직적으로 분서했다",
+    "이단": "교회가 '올바르지 않다'고 판정한 가르침. 이단으로 선고되면 탄압·파문의 대상이 되었다",
+    "초월적": "인간의 경험이나 물질 세계를 초월한 존재·성질",
+    "공리": "증명 없이 참으로 받아들이는 전제",
+    "명제": "참인지 거짓인지 판정할 수 있는 주장·문장",
+    "전제": "논의의 출발점으로 받아들이는 주장",
+    "확증편향": "자신의 기존 신념을 뒷받침하는 정보에 주목하고, 모순되는 정보는 경시하는 인지적 경향",
+    "복음서": "예수의 생애와 가르침을 기록한 문서. 정경에는 4개(마태, 마가, 누가, 요한)가 포함",
+    "동방교회": "콘스탄티노플을 중심으로 발전한 기독교. 그리스어 성경을 사용",
+    "서방교회": "로마를 중심으로 발전한 기독교. 라틴어 불가타를 사용",
+    "수렴진화": "서로 다른 조상을 가진 생물이 비슷한 환경에서 비슷한 형질을 독립적으로 획득하는 현상",
+    "자기언급": "자기 자신에 대해 언급하는 것. 모순이 발생할 수 있다",
+    "탈퇴비용": "어떤 집단·신앙에서 벗어날 때 잃게 되는 것. 사회적 네트워크, 소속감, 가족 관계 등",
+    "문화진화론": "문화나 종교가 생물의 진화와 유사한 메커니즘(변이·선택·전달)으로 변화한다는 이론",
+    "집단적응": "어떤 특성이 개체가 아니라 집단 전체의 생존에 유리하다는 생각",
+  },
+};
+
+const GLOSSARY_EXTRA = {
+  "アンセルムス": "1033-1109年。カンタベリー大司教。存在論的論証を提唱",
+  "ライプニッツ": "1646-1716年。ドイツの哲学者。充足理由律で知られる",
+  "パウロ": "紀元1世紀のキリスト教の使徒。原罪と贖罪の神学を構築",
+  "モーセ": "旧約聖書でモーセ五書の著者とされる人物",
+  "ローマ書": "パウロがローマの教会に宛てた書簡。ἐφ' ᾧ の翻訳問題が原罪教理の根拠",
+  "アタナシオス": "296-373年。367年の書簡で新約27書を初めて列挙",
+  "カルタゴ": "397年の会議で新約27書を正式承認。418年の会議でペラギウスを異端と断罪",
+  "BHS": "Biblia Hebraica Stuttgartensia。ヘブライ語旧約聖書の標準学術版",
+  "NA28": "Nestle-Aland 28th edition。ギリシャ語新約聖書の標準学術版",
+  "beyom": "ヘブライ語 בְּיוֹם。「その日に」とも「〜した場合」とも読める",
+  "終末論": "世界の終わりと最後の審判に関する教理",
+  "予定説": "神があらかじめ誰が救われるかを定めているという教理",
+  "自由意志": "人間が自分の行為を自由に選択できるという概念",
+  "代理贖罪": "キリストの義が信者に転嫁され罪が赦されるという教理",
+  "使徒的継承": "教会の権威が使徒から司教へ途切れなく受け継がれているという教理",
+  "幼児洗礼": "原罪教理に基づき生まれた子に洗礼を施す慣行",
+  "חַטָּאת": "ヘブライ語で「罪」。創世記3章には出てこず、聖書初出は4:7",
+  "フィリポ福音書": "ナグ・ハマディのグノーシス派文書。イエスとマグダラのマリアの関係を記す",
+  "マリア福音書": "マグダラのマリアがイエスから受けた秘密の教えを伝える文書",
+  "ユダ福音書": "ユダはイエスの最も深い教えを理解した唯一の弟子だったとする文書",
+  "ヨハネのアポクリュフォン": "旧約の神を「偽の神」として描くナグ・ハマディの最重要文書",
+  "生存バイアス": "生き残ったものだけが見え、消えたものが見えないことで判断が歪む傾向",
+  "エントロピー": "物理学で無秩序さの度合い。閉じた系では常に増大する",
+  "熱力学第二法則": "閉じた系のエントロピーは時間とともに増大し続けるという法則",
+  "ルター": "マルティン・ルター（1483-1546年）。宗教改革の指導者",
+  "プロテスタント": "16世紀にカトリックから分離したキリスト教の諸教派",
+  "カトリック": "ローマ教皇を首長とするキリスト教最大の教派",
+  "正教会": "東方教会の主流。ギリシャ語原文を使用",
+  "不可知論": "神がいるかは「わからない」とする立場",
+  "無神論": "神は存在しないとする立場",
+  "有神論": "神は存在するとする立場",
+  "人格神": "意志・感情を持ち人間と関わる神",
+  "必然的存在": "存在しないことが論理的に不可能な存在",
+  "体系化": "バラバラの要素を一つの仕組みとして整理すること",
+  "信条": "信仰内容を短くまとめた宣言文",
+  "威厳": "堂々として厳かなこと",
+  "祭司": "神殿で儀式を執り行う宗教的指導者",
+  "使徒": "イエスに直接選ばれた12人の弟子",
+  "司教": "教区を管轄するキリスト教の聖職者",
+  "叙事": "出来事を順に語ること",
+  "反芻": "飲み込んだ食物を口に戻して再び噛むこと",
+  "母集団": "統計学で調査対象全体の集団",
+  "帰結": "ある前提から導かれる結果",
+  "関係代名詞": "先行する名詞を受けて説明を加える文法要素",
+  "逆算": "結果から出発して原因を推定すること",
+  "凝固": "液体が固体になること",
+  "接続用法": "文と文をつなぐ文法的な使い方",
+  "贖い": "あがない。罪の代償を支払って赦しを得ること",
+  "構文": "文の組み立て方",
+  "存在論的論証": "概念から神の存在を導く哲学的論証",
+  "目的論的論証": "宇宙の調整から設計者を推定する論証",
+  "道徳論証": "客観的道徳から神を推定する論証",
+  "定動詞": "人称・数・時制が確定した動詞の形",
+  "縮約形": "二つ以上の語が縮まって一つになった形",
+  "先行詞": "関係代名詞が指す前の名詞",
+  "概念操作": "定義を操作して結論を導く方法",
+  "贖罪論": "キリストの死がなぜ罪を償うかの神学理論",
+  "救済論": "人間がどう救われるかの神学理論",
+  "感覚的欲求": "五感に基づく欲求",
+  "自己組織化": "外部の指示なしに秩序が形成されること",
+  "複雑系": "多数の要素が相互作用する予測困難なシステム",
+  "字義通り": "書かれた言葉をそのまま読むこと",
+  "転嫁": "本来の負担を別の人に移すこと",
+  "要請": "論理的に必要とすること",
+  "写本": "手書きで複製された文書",
+  "公式教理": "教会会議で正式決定された教え",
+  "決定不能": "どちらが正しいか判定できないこと",
+  "離脱コスト": "集団から離れる際に失うもの",
+  "刷り込み": "幼少期に定着した信念や価値観",
+  "近似": "正確な値に近い値で代用すること",
+  "理想化": "現実を単純化して仮定すること",
+  "パラメータ空間": "変数の取りうる値の全組み合わせ",
+  "自作自演": "自分で問題を作り自分で解決すること",
+  "不定詞": "人称等が確定していない動詞の形",
+  "帰属": "あるものがどこに属するか",
+  "恩寵": "おんちょう。神が無条件に与える恵み",
+  "啓示": "神が人間に真理を示すこと",
+  "聖霊": "三位一体の第三の位格。神の霊",
+  "洗礼": "水で罪を清めキリスト教徒になる儀式",
+  "割礼": "男児の包皮を切除する儀式。神との契約のしるし",
+  "堕落": "アダムとエバが禁じられた実を食べたこと",
+  "代価": "罪を償うために支払われるもの",
+  "仲介者": "神と人間の間を取り持つ存在",
+  "悔い改め": "自分の罪を認め心を入れ替えること",
+  "凝固因子": "血液を固めるタンパク質。生後8日目に最高値",
+  "地動説": "地球が太陽の周りを回るという説",
+  "光合成": "植物が太陽光をエネルギーに変える過程",
+  "遺伝学": "遺伝の仕組みを研究する学問",
+  "修辞的": "表現技法として使われる。答えを求めない問いなど",
+  "布教": "宗教の教えを広める活動",
+  "物語化": "概念を物語の形に構成すること",
+  "福音書": "イエスの生涯と教えを記した文書。正典には4つが含まれる",
+  "冒涜": "ぼうとく。神聖なものを侮辱すること",
+  "遡及適用": "後から作られた概念を過去に当てはめること",
+  "反芻動物": "はんすうどうぶつ。食べた物を口に戻して再び噛む動物",
+  "威厳の複数": "王が自分を「われわれ」と呼ぶ修辞法",
+  "原罪教理": "アダムの罪が全人類に遺伝するという教会の教え",
+  "文化進化論": "文化が生物進化と類似のメカニズムで変化するという理論",
+  "集団適応": "特性が集団全体の生存に有利だとする考え",
+};
+
+const getLangGlossary = (l) => l === "ko" ? GLOSSARY_I18N.ko : {...GLOSSARY_I18N.ja, ...GLOSSARY_EXTRA};
+
+const _JA_GLOSSARY = {...GLOSSARY_I18N.ja, ...GLOSSARY_EXTRA};
+
+const T = ({ t, children }) => (
+  <span style={{ position: "relative", display: "inline", borderBottom: "1px dotted #6b5d4d", cursor: "help" }} className="tooltip-wrap">
+    {children || t}
+    <span className="tooltip-text">{_JA_GLOSSARY[t] || t}</span>
+  </span>
+);
+
+const Fact = ({ num, children, sub }) => (
+  <div style={{ borderLeft: "2px solid #4a6741", paddingLeft: 20, margin: "16px 0" }}>
+    <div style={{ fontSize: 11, color: "#4a6741", marginBottom: 4 }}>事実 {num}</div>
+    <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.7 }}>{children}</div>
+    {sub && <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>{sub}</div>}
+  </div>
+);
+
+const Think = ({ num, children, sub }) => (
+  <div style={{ borderLeft: "2px solid #8b7355", paddingLeft: 20, margin: "16px 0" }}>
+    <div style={{ fontSize: 11, color: "#8b7355", marginBottom: 4 }}>考察 {num}</div>
+    <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.7 }}>{children}</div>
+    {sub && <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>{sub}</div>}
+  </div>
+);
+
+const Compare = ({ left, right, leftLabel, rightLabel, leftColor, rightColor }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, margin: "20px 0" }}>
+    <div style={{ background: "rgba(0,0,0,0.2)", border: `1px solid ${leftColor || "#3d3428"}`, borderRadius: 6, padding: 16 }}>
+      <div style={{ fontSize: 11, color: leftColor || "#8b7355", marginBottom: 8, letterSpacing: 2 }}>{leftLabel}</div>
+      <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>{left}</div>
+    </div>
+    <div style={{ background: "rgba(0,0,0,0.2)", border: `1px solid ${rightColor || "#3d3428"}`, borderRadius: 6, padding: 16 }}>
+      <div style={{ fontSize: 11, color: rightColor || "#6b8cba", marginBottom: 8, letterSpacing: 2 }}>{rightLabel}</div>
+      <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>{right}</div>
+    </div>
+  </div>
+);
+
+const Arrow = ({ from, to, label }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "8px 0", flexWrap: "wrap" }}>
+    <span style={{ fontSize: 13, color: "#8b7355", background: "#1a1714", padding: "4px 10px", borderRadius: 4, border: "1px solid #2a2520" }}>{from}</span>
+    <span style={{ color: "#4a4035" }}>→</span>
+    <span style={{ fontSize: 13, color: "#c4b8a4", background: "#1a1714", padding: "4px 10px", borderRadius: 4, border: "1px solid #2a2520" }}>{to}</span>
+    {label && <span style={{ fontSize: 11, color: "#6b5d4d" }}>{label}</span>}
+  </div>
+);
+
+const TL = ({ year, title, text, color }) => (
+  <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+      <div style={{ width: 10, height: 10, borderRadius: "50%", border: `2px solid ${color || "#8b7355"}`, background: `${color || "#8b7355"}22` }} />
+      <div style={{ width: 1, flex: 1, background: "#2a2520", minHeight: 20 }} />
+    </div>
+    <div style={{ paddingBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11, color: "#6b5d4d", fontFamily: "monospace" }}>{year}</span>
+        <span style={{ fontSize: 14, color: "#e8dcc8" }}>{title}</span>
+      </div>
+      <div style={{ fontSize: 12, color: "#7a6d5e", lineHeight: 1.7 }}>{text}</div>
+    </div>
+  </div>
+);
+
+const SH = ({ children, num }) => (
+  <div style={{ marginBottom: 6 }}>
+    {num && <div style={{ fontSize: 11, color: "#8b7355", letterSpacing: 3, marginBottom: 6 }}>第{num}章</div>}
+    <h2 style={{ fontSize: 28, fontWeight: 400, color: "#e8dcc8", margin: "0 0 12px", fontFamily: "'Cormorant Garamond', serif", fontFeatureSettings: '"lnum"', lineHeight: 1.3 }}>{children}</h2>
+  </div>
+);
+
+const P = ({ children }) => (
+  <p style={{ fontSize: 14, color: "#8a7e6e", lineHeight: 1.8, margin: "0 0 16px" }}>{children}</p>
+);
+
+const Note = ({ children }) => (
+  <div style={{ fontSize: 12, color: "#6b5d4d", padding: "12px 16px", background: "rgba(0,0,0,0.15)", borderRadius: 6, margin: "16px 0", lineHeight: 1.7 }}>{children}</div>
+);
+
+const HR = () => <div style={{ borderTop: "1px solid #1e1b17", margin: "48px 0" }} />;
+
+function App() {
+  const [activeSection, setActiveSection] = useState("prologue"); } catch { return "ja"; }
+  });
+  const sectionRefs = useRef({});
+  const SECTIONS = SECTIONS_I18N.ja;
+  const GLOSSARY = _JA_GLOSSARY;
+
+  useEffect(() => {
+    const l = document.createElement("link");
+    l.href = "https://fonts.googleapis.com/css2?family=Noto+Serif+Hebrew:wght@400;700&family=Shippori+Mincho:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap";
+    l.rel = "stylesheet";
+    document.head.appendChild(l);
+  }, []);
+
+  useEffect(() => {
+    const h = () => {
+      const entries = SECTIONS.map(s => {
+        const el = sectionRefs.current[s.id];
+        if (!el) return { id: s.id, top: 99999 };
+        return { id: s.id, top: Math.abs(el.getBoundingClientRect().top - 60) };
+      });
+      setActiveSection(entries.reduce((a, b) => a.top < b.top ? a : b).id);
+    };
+    window.addEventListener("scroll", h, { passive: true });
+    return () => window.removeEventListener("scroll", h);
+  }, []);
+
+  useEffect(() => {
+    const terms = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+    const seen = new Set();
+    const timer = setTimeout(() => {
+      document.querySelectorAll('.tooltip-wrap').forEach(el => {
+        const t = el.childNodes[0]?.textContent?.trim();
+        if (t && GLOSSARY[t]) seen.add(t);
+      });
+      const walk = (node) => {
+        if (node.nodeType === 3 && node.textContent.trim()) {
+          const parent = node.parentElement;
+          if (!parent || parent.closest('.tooltip-wrap') || parent.closest('nav') || parent.closest('button') || parent.tagName === 'A') return;
+          for (const term of terms) {
+            if (seen.has(term)) continue;
+            const idx = node.textContent.indexOf(term);
+            if (idx === -1) continue;
+            seen.add(term);
+            const before = node.textContent.substring(0, idx);
+            const after = node.textContent.substring(idx + term.length);
+            const span = document.createElement('span');
+            span.className = 'tooltip-wrap';
+            span.style.borderBottom = '1px dotted #6b5d4d';
+            span.style.cursor = 'help';
+            span.textContent = term;
+            const tip = document.createElement('span');
+            tip.className = 'tooltip-text';
+            tip.textContent = GLOSSARY[term];
+            span.appendChild(tip);
+            const frag = document.createDocumentFragment();
+            if (before) frag.appendChild(document.createTextNode(before));
+            frag.appendChild(span);
+            if (after) frag.appendChild(document.createTextNode(after));
+            parent.replaceChild(frag, node);
+            return;
+          }
+        } else if (node.nodeType === 1) {
+          Array.from(node.childNodes).forEach(walk);
+        }
+      };
+      walk(document.body);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const scrollTo = id => sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth" });
+
+  const sec = (id, content) => (
+    <section ref={el => sectionRefs.current[id] = el} style={{ paddingTop: 80, paddingBottom: 40 }}>
+      {content}
+    </section>
+  );
+
+  return (
+    <div style={{ background: "#0f0d0a", minHeight: "100vh", color: "#c4b8a4", fontFamily: "'Shippori Mincho', Georgia, serif" }}>
+      <style>{`
+        .tooltip-wrap { position: relative; }
+        .tooltip-text {
+          visibility: hidden; opacity: 0;
+          position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+          background: #1e1b17; border: 1px solid #3d3428; color: #a89880;
+          padding: 8px 12px; border-radius: 6px; font-size: 11px; line-height: 1.6;
+          width: max-content; max-width: 280px; z-index: 50;
+          transition: opacity 0.2s, visibility 0.2s;
+          pointer-events: none; white-space: normal;
+        }
+        .tooltip-wrap:hover .tooltip-text { visibility: visible; opacity: 1; }
+      `}</style>
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 40, background: "rgba(15,13,10,0.92)", backdropFilter: "blur(8px)", borderBottom: "1px solid #1e1b17" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px", display: "flex", height: 44, alignItems: "center", gap: 2, overflowX: "auto" }}>
+          {SECTIONS.map(s => (
+            <button key={s.id} onClick={() => scrollTo(s.id)}
+              style={{ padding: "6px 10px", fontSize: 11, whiteSpace: "nowrap", border: "none", borderRadius: 4, cursor: "pointer", transition: "all 0.2s", fontFamily: "'Shippori Mincho', serif",
+                background: activeSection === s.id ? "rgba(139,115,85,0.15)" : "transparent",
+                color: activeSection === s.id ? "#c4a862" : "#4a4035" }}>
+              {s.label}
+            </button>
+          ))}
+
+          <a href="../ko/" style={{ marginLeft: "auto", padding: "4px 10px", fontSize: 10, border: "1px solid #2a2520", borderRadius: 4, color: "#6b5d4d", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>한국어</a>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 24px" }}>
+
+        {/* ===== PROLOGUE ===== */}
+        {sec("prologue", <>
+          <div style={{ paddingTop: 60, paddingBottom: 40 }}>
+            <h1 style={{ fontSize: 42, fontWeight: 400, color: "#e8dcc8", lineHeight: 1.2, margin: "0 0 24px", fontFamily: "'Cormorant Garamond', serif", fontFeatureSettings: '"lnum"' }}>
+              聖書を読んで<br />考えたこと
+            </h1>
+            <P>聖書を読んでいく中で、翻訳や教理だけでは見えない問いが浮かんできました。原文の記述、教義の成り立ち、排除された文書、信仰を支える構造——調べるほど考えることが増えていきました。このサイトは、そこで見つけた事実と、そこから生まれた問いを整理したものです。</P>
+            <P>ここには事実と、そこから導いた考察と、問いがあります。事実と考察は明示的に区別しています。それをどう受け取るかは、あなた自身が決めることです。</P>
+            <div style={{ background: "rgba(0,0,0,0.15)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "16px 0" }}>
+              <div style={{ fontSize: 13, color: "#c4b8a4", lineHeight: 1.9 }}>
+                僕は「神はいない」と主張したいのではありません。神はいるかもしれない。<br />
+                僕が疑念を抱いているのは、「神がいる」という主張そのものではなく、<strong style={{ color: "#e8dcc8" }}>その主張を支持する過程</strong>です。<br /><br />
+                気になっているのは、神がいる理由を説明するときの構造に、常に<T t="確証バイアス">確証バイアス</T>が働いているように見えることです。良いことが起きれば「神の恵み」、悪いことが起きれば「神の試練」。矛盾を指摘すれば「理解が足りない」「心が偽っている」。どんな結果も教義を補強する方向に処理される。この構造に一度気づいてしまうと、見えなかったふりはできません。<br /><br />
+                このサイトには単なる記述の矛盾（創造の順番が違う、など）も含まれていますが、僕が本当に気になるのはそこではありません。<strong style={{ color: "#e8dcc8" }}>どの解釈を選んでも別の矛盾が生じる箇所</strong>と、<strong style={{ color: "#e8dcc8" }}>どちらの解釈も論理的に説明しきれない箇所</strong>です。一つの解釈で説明がつくなら「なるほど」で済む。どの方向に進んでも問題が残るとき、そこには本当の問いがあると思います。<br /><br />
+                この問いを追求するのは、この問いが特別に重要だからではありません。ただ、<strong style={{ color: "#e8dcc8" }}>考えることをやめて信仰するだけ、というのが嫌</strong>なだけです。だから原文を読みます。だから矛盾を見逃しません。
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 20, margin: "20px 0", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                <div style={{ width: 3, height: 20, background: "#4a6741", borderRadius: 2 }} />
+                <span style={{ color: "#4a6741" }}>事実</span>
+                <span style={{ color: "#6b5d4d" }}>— 原文で確認できる記述</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                <div style={{ width: 3, height: 20, background: "#8b7355", borderRadius: 2 }} />
+                <span style={{ color: "#8b7355" }}>考察</span>
+                <span style={{ color: "#6b5d4d" }}>— 事実から導いた僕の推論</span>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginTop: 32, textAlign: "center" }}>
+              {[
+                { n: "2", l: "つの創造記述", s: "1章 vs 2章" },
+                { n: "3", l: "つの声", s: "神・エバ・蛇" },
+                { n: "1", l: "つの翻訳問題", s: "ἐφ' ᾧ → in quo" },
+                { n: "52", l: "の排除文書", s: "ナグ・ハマディ" },
+              ].map((x, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: 26, color: "#c4a862", fontFamily: "'Cormorant Garamond', serif", fontFeatureSettings: '"lnum"' }}>{x.n}</div>
+                  <div style={{ fontSize: 11, color: "#6b5d4d" }}>{x.l}</div>
+                  <div style={{ fontSize: 10, color: "#4a4035" }}>{x.s}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>)}
+
+        <HR />
+
+        {/* ===== TWO CREATIONS ===== */}
+        {sec("two_creations", <>
+          <SH num="一">二つの創造記述</SH>
+          <P>創世記1章と2章は、異なる順序で世界の創造を語っている。</P>
+          <Compare
+            leftLabel="1章（P資料）" leftColor="#6b8cba"
+            left="植物（1:11）→ 動物（1:20-25）→ 人間・男女同時（1:26-27）。秩序だった宇宙創造。「神は見てよしとされた」の繰り返し。"
+            rightLabel="2章（J資料）" rightColor="#c4a862"
+            right="2:5「まだ野の草もなかった」→ 男（2:7）→ 植物（2:8-9）→ 動物（2:19）→ 女（2:21-22）。人間中心の園物語。"
+          />
+          <Fact num="1">1章と2章で創造の順序が異なる。1章：植物→動物→人間（男女同時）。2章：2:5「まだ野の草もなかった」→ 男→植物→動物→女。2章は2:5で植物の不在を明示している。</Fact>
+          <Think num="1">この順序差を「補足関係」として読むかどうかは学術的に議論が分かれる。ただし2:5が時系列を明示しているように読める以上、単純な補足としての読みには構造上の困難があるように見える。</Think>
+          <Fact num="2">1章で神は「<T t="エロヒム">エロヒム</T>」と呼ばれ、2章では「<T t="ヤハウェ">ヤハウェ</T>・エロヒム」。神の名前が変わる。</Fact>
+          <Note><T t="文書仮説">文書仮説</T>では1章を<T t="P資料">P資料</T>（祭司資料）、2章を<T t="J資料">J資料</T>（ヤハウェ資料）に帰属させる。異なる時代に異なる共同体が書いた伝承が、後に一つに編集された。</Note>
+          <Q>同じ出来事について異なる順序の記述がある。これは一人の著者の意図か、複数の伝承の並列か。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== THREE VOICES ===== */}
+        {sec("three_voices", <>
+          <SH num="二">三つの声 — 「死」をめぐるヘブライ語の差異</SH>
+          <P>「食べると死ぬ」をめぐる三者（神・エバ・蛇）の言葉は、ヘブライ語の文法レベルで明確に異なる。この差異は翻訳では消失する。</P>
+
+          <div style={{ borderLeft: "2px solid #c4a862", paddingLeft: 20, margin: "20px 0" }}>
+            <div style={{ fontSize: 11, color: "#c4a862", letterSpacing: 2, marginBottom: 4 }}>神の警告（2:17）</div>
+            <Heb text="כִּי בְּיוֹם אֲכָלְךָ מִמֶּנּוּ מוֹת תָּמוּת" />
+            <div style={{ fontSize: 13, color: "#a89880" }}><T t="不定詞絶対形">不定詞絶対形</T>（מוֹת）＋定動詞（תָּמוּת）＝ <strong style={{ color: "#c4a862" }}>最大の強調</strong>「あなたは必ず死ぬ」</div>
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 4 }}>2人称男性単数。בְּיוֹם（beyom）は「その日に」とも「〜した場合」とも読める。</div>
+          </div>
+
+          <div style={{ borderLeft: "2px solid #6b8cba", paddingLeft: 20, margin: "20px 0" }}>
+            <div style={{ fontSize: 11, color: "#6b8cba", letterSpacing: 2, marginBottom: 4 }}>エバの伝達（3:3）</div>
+            <Heb text="פֶּן תְּמֻתוּן" />
+            <div style={{ fontSize: 13, color: "#a89880" }}>強調なし。「死ぬといけないから」。2人称<strong style={{ color: "#6b8cba" }}>複数</strong>に変更。「触れてもならない」を追加（神の原文にない）。</div>
+          </div>
+
+          <div style={{ borderLeft: "2px solid #a85454", paddingLeft: 20, margin: "20px 0" }}>
+            <div style={{ fontSize: 11, color: "#a85454", letterSpacing: 2, marginBottom: 4 }}>蛇の否定（3:4）</div>
+            <Heb text="לֹא מוֹת תְּמֻתוּן" />
+            <div style={{ fontSize: 13, color: "#a89880" }}>神の強調構文を<strong style={{ color: "#a85454" }}>復元した上で否定</strong>。「あなたたちは決して死なない」。</div>
+          </div>
+
+          <Note>エバは神の言葉を弱めて蛇に伝えた。蛇はそれを最大の強調で否定した。三者の言葉は翻訳では同じに見えるが、ヘブライ語では全く異なる強度を持つ。</Note>
+          <Q>神は最大の強調で「死ぬ」と言った。beyomを「その日に」と読めば、食べた日に死ななかった事実と衝突する。「死すべき状態への移行」と読む余地はあるが、なぜ明晰に語らなかったのか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== SERPENT ===== */}
+        {sec("serpent", <>
+          <SH num="三">蛇は嘘をついたのか</SH>
+          <P>蛇の予告と実際の帰結を本文に即して比較する。</P>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, margin: "20px 0" }}>
+            <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16 }}>
+              <div style={{ fontSize: 11, color: "#a85454", letterSpacing: 2, marginBottom: 8 }}>蛇の予告</div>
+              <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>
+                ① 死なない<br />② 目が開ける<br />③ 神のように善悪を知る者になる
+              </div>
+            </div>
+            <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16 }}>
+              <div style={{ fontSize: 11, color: "#4a6741", letterSpacing: 2, marginBottom: 8 }}>実際の帰結</div>
+              <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>
+                ① 食べた日には死ななかった（930歳で死亡）<br />② 「ふたりの目が開けた」（3:7）<br />③ 「人はわれわれのひとりのようになった」（3:22 — 神自身の認定）
+              </div>
+            </div>
+          </div>
+          <Fact num="1">3:7「ふたりの目が開けた」。3:22で神自身が「人はわれわれのひとりのようになった」と認定した。食べた日にアダムは死なず、5:5で930歳で死んだ。</Fact>
+          <Think num="1">蛇の予告（目が開ける、神のようになる）と本文の記述には一致する要素がある。「死なない」については beyom の解釈に依存する。少なくとも本文は蛇の言葉を単純な全面的虚偽として処理していないように読める。</Think>
+          <Fact num="2">蛇への罰の理由は「あなたがこれをしたから」（3:14）とだけ記され、「嘘をついたから」とは書かれていない。「これ」の内容は明示されていない。</Fact>
+          <Fact num="3">2:17で神が伝えた情報は「食べると死ぬ」のみ。「食べると目が開けて善悪を知る者になる」という情報は2:17に含まれていない。</Fact>
+          <Q>少なくとも叙事上、蛇の発言には実現した要素がある。本文は蛇を単純な全面的虚偽として処理していない。では蛇は何を罰されたのか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== EDEN ===== */}
+        {sec("eden", <>
+          <SH num="四">エデンの設計 — 知識なき者に選択を求めるパラドックス</SH>
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 20, margin: "20px 0" }}>
+            <div style={{ fontSize: 11, color: "#6b5d4d", letterSpacing: 2, marginBottom: 12 }}>エデンの二本の木</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 14, color: "#4a6741" }}>命の木</div>
+                <div style={{ fontSize: 12, color: "#6b5d4d" }}>禁止されていない → 食べてよい → 永遠に生きられる</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, color: "#a85454" }}>善悪の知識の木</div>
+                <div style={{ fontSize: 12, color: "#6b5d4d" }}>禁止 → 食べてはならない</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: "#7a6d5e", marginTop: 12 }}>当初の設計：「善悪を知らないまま永遠に生きる」状態</div>
+          </div>
+
+          <Fact num="1">エバが食べた理由として本文に記述されているのは「食べるに良く、目には美しく、賢くなるには好ましいと思われた」（3:6）という感覚的欲求。道徳的判断としては記述されていない。</Fact>
+          <Think num="1">善悪の知識がない状態で「従う＝善、従わない＝悪」の判断が成立するかは、「善悪の知識」がどの範囲を指すかに依存する。ただし本文上、エバの動機は善悪の判断ではなかった。</Think>
+          <Fact num="2">3:22で神は追放の理由を述べている：「人はわれわれのひとりのようになり、善悪を知るものとなった。彼は手を伸べ、命の木からも取って食べ、永久に生きるかもしれない」。善悪の知識と不死の組み合わせを防ぐことが追放の理由として記述されている。</Fact>
+          <Think num="2">3:17-19の呪いの言葉は罰としても読めるため、追放が「罰でない」とは断定できない。しかし3:22が追放の理由として善悪+不死の阻止を明記していることは事実。</Think>
+          <Fact num="3">創世記の神は園を歩き（3:8）、「どこにいるのか」と問い（3:9）、「誰が裸だと教えたのか」と尋ね（3:11）、「われわれのひとりのようになった」と事後的に認定している（3:22）。</Fact>
+          <Think num="3">これらの描写は後代の神学が定義した全知の神の描写とは異なって見える。「修辞的問いかけ」という解釈もあるが、3:22の事後的認定は修辞では説明しにくい。</Think>
+          <Q>善悪の判断ができない存在の行為を「罪」と呼べるか。罪の認識は罪の後にしか来ない。では原罪の前提は成立するのか。</Q>
+          <Q>なぜ神は善悪の知識と不死の組み合わせを防ぎたかったのか。「われわれのひとりのようになった」とは何を意味するのか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== WE ===== */}
+        {sec("we", <>
+          <SH num="五">נַעֲשֶׂה — 「われわれが造ろう」</SH>
+          <P>創世記には神が「われわれ」と複数形で語る箇所が3つある。前後は全て単数形なのに、この3箇所だけが複数になる。</P>
+
+          {[
+            { r: "1:26", h: "וַיֹּאמֶר אֱלֹהִים נַעֲשֶׂה אָדָם בְּצַלְמֵנוּ כִּדְמוּתֵנוּ", t: "エロヒムは言った（単数）— 「われわれが造ろう（複数）、人を、われわれの像に」", n: ["וַיֹּאמֶר（言った）＝ 単数", "נַעֲשֶׂה（造ろう）＝ 1人称複数", "直後の1:27 では בְּצַלְמוֹ（彼の像に）と単数に戻る"] },
+            { r: "3:22", h: "הֵן הָאָדָם הָיָה כְּאַחַד מִמֶּנּוּ", t: "「見よ、人はわれわれのうちの一人のようになった」", n: ["כְּאַחַד מִמֶּנּוּ ＝ 複数の集団の一員を文法的に要求する"] },
+            { r: "11:7", h: "הָבָה נֵרְדָה וְנָבְלָה שָׁם שְׂפָתָם", t: "「さあ、われわれが降りよう（複数）」", n: ["11:5 では וַיֵּרֶד（単数＝彼が降りた）", "2節の差で単数→複数に切り替わる"] },
+          ].map((v, i) => (
+            <div key={i} style={{ borderLeft: "2px solid #c4a862", paddingLeft: 20, margin: "16px 0" }}>
+              <div style={{ fontSize: 11, color: "#6b5d4d", letterSpacing: 2, marginBottom: 4 }}>創世記 {v.r}</div>
+              <Heb text={v.h} />
+              <div style={{ fontSize: 13, color: "#a89880", marginBottom: 8 }}>{v.t}</div>
+              {v.n.map((n, j) => <div key={j} style={{ fontSize: 12, color: "#6b5d4d", paddingLeft: 12 }}>▸ {n}</div>)}
+            </div>
+          ))}
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "24px 0" }}>
+            <div style={{ fontSize: 11, color: "#6b5d4d", marginBottom: 12, letterSpacing: 2 }}>教会の主な解釈とその問題</div>
+            {[
+              { l: "三位一体説", t: "325年ニカイア公会議以降の概念。創世記著者がこれを意図したとは考えにくい。3:22「うちの一人のように」は三位一体の内部で数えられる構文ではない。" },
+              { l: "天使説", t: "3:22では人間が天使と同格になったことを神が認める構文になる。" },
+              { l: "威厳の複数", t: "ヘブライ語動詞コホータティブに威厳の複数を使う例が他にない。" },
+            ].map((x, i) => (
+              <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < 2 ? "1px solid #1e1b17" : "none" }}>
+                <div style={{ fontSize: 12, color: "#c4a862" }}>{x.l}</div>
+                <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 2 }}>{x.t}</div>
+              </div>
+            ))}
+          </div>
+          <Q>発話は単数（一人の神）、内容は複数（われわれ）。3箇所とも「計画は複数、実行は単数」。この不一致はなぜ存在するのか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== ORIGINAL SIN ===== */}
+        {sec("original_sin", <>
+          <SH num="六"><T t="原罪">原罪</T>ができるまで — 約1000年の旅</SH>
+          <P>「アダムが食べた＝罪＝全人類が背負う」は聖書の中心的教理。しかし原文を追うと、この接続がいつ・どのように作られたかが見えてくる。</P>
+
+          <Fact num="1">創世記3章に חַטָּאת（罪）という単語は一度も出てこない。「彼女はその実を取って食べた」（3:6）— 行為の記述のみ。</Fact>
+          <Fact num="2">חַטָּאת の聖書初出は創世記4:7。しかも「お前はそれを支配できる（וְאַתָּה תִּמְשׇׁל־בּוֹ）」と神自身が語っている。</Fact>
+          <Fact num="3">エゼキエル18:20「子は父の咎を負わない（בֵּן לֹא־יִשָּׂא בַּעֲוֺן הָאָב）」— ヤハウェが自らの存在に懸けた宣誓（חַי־אָנִי）の上で語った。聖書中で極めて重い形式の宣言の一つ。</Fact>
+
+          <div style={{ fontSize: 12, color: "#6b5d4d", margin: "24px 0 8px", letterSpacing: 2 }}>テキストの変遷</div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 16, fontSize: 11, color: "#4a4035", flexWrap: "wrap" }}>
+            <span>● <span style={{ color: "#6b8cba" }}>テキスト</span></span>
+            <span>● <span style={{ color: "#a85454" }}>翻訳</span></span>
+            <span>● <span style={{ color: "#c4a862" }}>神学</span></span>
+          </div>
+
+          <TL year="前10-9C?" title="創世記3章（J資料）" text="「食べた」とだけ書かれている。חַטָּאת（罪）の語なし。" color="#6b8cba" />
+          <TL year="前10-9C?" title="創世記4:7" text="חַטָּאת 聖書初出。「お前はそれを支配できる」— 人間は罪に勝てる存在として描写。" color="#6b8cba" />
+          <TL year="前6C" title="エゼキエル18:20" text="「子は父の咎を負わない」— 罪の世代間遺伝を明確に否定。" color="#6b8cba" />
+          <TL year="56-57年" title="パウロ・ローマ書5:12" text="「一人の人間を通して罪が世界に入った」— アダムの行為と全人類の罪を初めて接続。しかしこの節の末尾が問題の核心。" color="#c4a862" />
+
+          <div style={{ background: "rgba(0,0,0,0.25)", border: "1px solid #a85454", borderRadius: 8, padding: 20, margin: "24px 0" }}>
+            <div style={{ fontSize: 13, color: "#a85454", letterSpacing: 2, marginBottom: 12 }}>一つの翻訳問題 — 原罪教理の形成に大きく影響した読み</div>
+
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginBottom: 4, letterSpacing: 2 }}>パウロが書いたギリシャ語原文</div>
+            <div style={{ fontSize: 20, color: "#d4c8b0", margin: "8px 0", lineHeight: 1.5, fontFamily: "'Cormorant Garamond', serif", fontFeatureSettings: '"lnum"', fontStyle: "italic" }}>
+              δι' ἑνὸς ἀνθρώπου ἡ ἁμαρτία εἰς τὸν κόσμον εἰσῆλθεν καὶ διὰ τῆς ἁμαρτίας ὁ θάνατος, καὶ οὕτως εἰς πάντας ἀνθρώπους ὁ θάνατος διῆλθεν, <span style={{ color: "#a85454" }}>ἐφ' ᾧ</span> πάντες ἥμαρτον
+            </div>
+
+            <div style={{ fontSize: 12, color: "#8a7e6e", lineHeight: 1.8, marginBottom: 16 }}>
+              「一人の人間を通して罪が世界に入り、罪を通して死が入った。こうして死が全人類に広がった、<span style={{ color: "#a85454", fontWeight: 600 }}>ἐφ' ᾧ</span> 全ての者が罪を犯したので」
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #4a6741", borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: 11, color: "#4a6741", letterSpacing: 2, marginBottom: 6 }}>ギリシャ語 <T t="ἐφ' ᾧ">ἐφ' ᾧ</T> の意味</div>
+                <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>
+                  ἐφ' ᾧ ＝ <strong style={{ color: "#4a6741" }}>「〜したので」「〜という理由で」</strong><br />
+                  関係代名詞の接続用法。理由・根拠を示す。<br /><br />
+                  読み：「全ての者が<strong>各自</strong>罪を犯したので、死が全人類に広がった」<br /><br />
+                  → 罪は<strong>各人の行為</strong>。アダムから遺伝したのではない。
+                </div>
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #a85454", borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: 11, color: "#a85454", letterSpacing: 2, marginBottom: 6 }}><T t="ウルガタ">ウルガタ</T>訳 <T t="in quo">in quo</T> の意味</div>
+                <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.7 }}>
+                  ἐφ' ᾧ → <strong style={{ color: "#a85454" }}>in quo</strong> と翻訳<br />
+                  in quo ＝「彼（アダム）において」<br /><br />
+                  読み：「全人類は<strong>アダムの中で</strong>罪を犯した」<br /><br />
+                  → 罪は<strong>アダムから遺伝</strong>する。全人類がアダムの罪に含まれる。
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: "rgba(0,0,0,0.15)", padding: 14, borderRadius: 6, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#4a6741", letterSpacing: 2, marginBottom: 6 }}>翻訳の事実</div>
+              <div style={{ fontSize: 12, color: "#8a7e6e", lineHeight: 1.8 }}>
+                ① ギリシャ語の ἐφ' ᾧ は前置詞 ἐπί ＋ 関係代名詞 ᾧ の縮約形。<br />
+                ② ウルガタはこれを in quo（「彼において」）と翻訳した。<br />
+                ③ ギリシャ語を母語とする東方教会は一貫して「各人が罪を犯したので」と読んでいる。「アダムの中で」とは読まない。<br />
+                ④ 東方教会はアウグスティヌスの原罪教理を共有していない。
+              </div>
+            </div>
+            <div style={{ background: "rgba(0,0,0,0.15)", padding: 14, borderRadius: 6, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#8b7355", letterSpacing: 2, marginBottom: 6 }}>考察：なぜ「誤訳」と言えるか</div>
+              <div style={{ fontSize: 12, color: "#8a7e6e", lineHeight: 1.8 }}>
+                ① ἐφ' ᾧ の文法的に最も自然な読みは「〜したので」（理由の接続）。これは多くの現代ギリシャ語学者が支持する読み。<br />
+                ② in quo（「彼の中で」）と読むためには、ᾧ の先行詞をアダム（またはθάνατος）とする必要があるが、文法的に離れすぎている。<br />
+                ③ したがって、原罪教理の中心的根拠となった読みは、ラテン語翻訳者の文法的選択に由来すると考えられる。<br />
+                ④ ただし、in quo を擁護する学者も存在する。「誤訳」は学術的多数派の見解だが、全員一致ではない。
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+              <span style={{ fontSize: 12, color: "#4a6741", background: "#0f1a0f", padding: "4px 10px", borderRadius: 4 }}>ἐφ' ᾧ「各人が罪を犯した」</span>
+              <span style={{ color: "#4a4035", fontSize: 16 }}>≠</span>
+              <span style={{ fontSize: 12, color: "#a85454", background: "#1a0f0f", padding: "4px 10px", borderRadius: 4 }}>in quo「アダムの中で罪を犯した」</span>
+            </div>
+          </div>
+
+          <TL year="4C末" title="ヒエロニムスによるウルガタ訳" text="ヒエロニムスがギリシャ語聖書をラテン語に翻訳。ἐφ' ᾧ を in quo と訳した。この翻訳の選択が西方教会の1000年以上の教理の方向を大きく方向づけた。東方教会はギリシャ語原文を使い続けたため、この翻訳に影響されなかった。" color="#a85454" />
+          <TL year="400年頃" title="アウグスティヌス — 原罪の体系化" text="ギリシャ語を読めなかったアウグスティヌスはウルガタの in quo に依拠し、「全人類はアダムの中で罪を犯した」と理解した。ペラギウス論争を通じて原罪（peccatum originale）を確立。罪は性行為を通じた生殖で遺伝するとまで主張した。" color="#c4a862" />
+          <TL year="418年" title="カルタゴ公会議" text="ペラギウスの教え（人間は罪に勝てる — 実は創世記4:7で神自身が語った内容）を異端として断罪。原罪と幼児洗礼の必要性が西方教会の公式教理に。東方教会はこの決定に拘束されない。" color="#c4a862" />
+
+          <Compare
+            leftLabel="西方教会（カトリック・プロテスタント）" leftColor="#c4a862"
+            left="罪がアダムから遺伝 → 全人類が有罪 → 恩寵のみが救済。順序：罪 → 死"
+            rightLabel="東方教会（正教会）" rightColor="#6b8cba"
+            right="死がアダムから広がった → 死ぬから罪を犯しやすい → 自由意志は損なわれていない。順序：死 → 罪"
+          />
+
+          <Q>原文に「罪」の語がない出来事が、約1000年と一つの翻訳上の選択を経て、10億人の教理になった。しかもギリシャ語を母語とする東方教会はこの教理を共有していない。このプロセスを知った上で、あなたはどう読むか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== TENSIONS ===== */}
+        {sec("tensions", <>
+          <SH num="七">聖書内部の緊張</SH>
+          <P>同じ聖書の中で、同じ問いに対して異なる回答が存在する。</P>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>先祖の罪は子孫に及ぶか</div>
+          {[
+            { r: "出エジプト20:5", t: "三〜四代まで及ぶ" },
+            { r: "エゼキエル18:20", t: "及ばない「子は父の罪を負わない」" },
+            { r: "ローマ5:12", t: "全人類に永遠に及ぶ" },
+          ].map((x, i) => <Arrow key={i} from={x.r} to={x.t} />)}
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>救済の条件</div>
+          <Compare
+            leftLabel="エゼキエル18:21-22" leftColor="#6b8cba"
+            left="「悪人がもしその罪から離れ……彼は必ず生きる。犯したすべてのとがは覚えられない」— 悔い改えだけで赦される。代価も仲介者も不要。"
+            rightLabel="ローマ3:23-24" rightColor="#c4a862"
+            right="「キリスト・イエスによる贖いのゆえに、値なしに義と認められる」— キリストの贖いなしには救われない。"
+          />
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>自由意志</div>
+          <Compare
+            leftLabel="自由意志を前提" leftColor="#4a6741"
+            left="申命記30:19「いのちを選びなさい」"
+            rightLabel="自由意志と緊張" rightColor="#a85454"
+            right="出エジプト9:12「主がパロの心をかたくなにした」/ ローマ9:18「望む者をかたくなにされる」"
+          />
+          <Note>パウロはローマ書5章でアダムの行為と全人類の罪を接続し（後に「原罪」と呼ばれる教理の基礎）、同じローマ書9章で「望む者をかたくなにされる」と予定論的な記述もしている。自由意志による堕落と、あらかじめ定められた選びが同一書簡内に共存している。</Note>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>道徳命令と神の行為</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, fontSize: 12, margin: "12px 0" }}>
+            {[
+              ["殺すな", "乳飲み子を含む全員の殺害を命じる（サムエル上15:3）"],
+              ["敵を愛せ", "信じない者を永遠に罰する"],
+              ["子は父の罪を負わない", "数百年前の先祖の行為を理由に子孫を殺す"],
+              ["無限に赦せ", "一度の違反を全人類に永遠に負わせる"],
+            ].map(([a, b], i) => (
+              <div key={i} style={{ padding: "10px 12px", background: i % 2 === 0 ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.08)", borderBottom: "1px solid #1e1b17" }}>
+                <span style={{ color: i < 4 ? "#6b8cba" : "#a89880" }}>{i % 2 === 0 ? "人間に求めること：" : "神の行為："}</span>
+                <span style={{ color: "#a89880" }}>{i % 2 === 0 ? a : b}</span>
+              </div>
+            ))}
+          </div>
+          <Q>同じ聖書の中で矛盾する回答がある。これは「深い調和」か、「異なる著者の異なる神学の並存」か。</Q>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>どの解釈をとっても緊張が生じる問い</div>
+          <P>以下の問いは、複数の解釈があるが、どの解釈を選んでも別の問題が生じる。</P>
+          {[
+            { t: "神は後悔するか", d: "創世記6:6「人を造ったことを悔いた」。一方で民数記23:19「神は悔いることがない」マラキ3:6「変わることがない」。本当に後悔した→全知でない。比喩→どの記述が比喩か判断する基準がない。対応を変えた→「変わることがない」と矛盾。" },
+            { t: "ユダの裏切りは予定されていたか", d: "ヨハネ13:18「聖書が成就するため」。マタイ26:24「その人は生まれなかった方がよかった」。予定されていた→自由意志なし→「わざわい」は不当。自由意志で裏切った→「成就するため」は予知でなく目的。裏切る性質だから選ばれた→全知のイエスが意図的に破滅に向かわせた。" },
+            { t: "祈りは神の計画を変えるか", d: "出エジプト32:14「主は思い直された」（モーセの執り成し）。イザヤ46:10「わが目的をことごとくなし遂げる」。変える→元の計画は完全でなかった。変えない→祈る意味がない。人間の側を変える→本文は「主が思い直した」と書いている。" },
+            { t: "赦されない罪があるか", d: "マタイ12:31「聖霊を冒涜することは赦されない」。ヨハネ第一1:9「罪を告白するならば…すべての不義からきよめて下さる」。赦されない罪がある→「すべて」に例外があるなら「すべて」ではない。全能の神が赦せない罪がある→全能ではない。" },
+            { t: "キリスト以前の人はどうなるか", d: "ヨハネ14:6「わたしによらないでは父のみもとに行くことはできない」。別の基準で裁かれた→「わたしによらないでは」の例外が存在する。贖いが時間を超えて適用→本文にその説明がない。知らなかったから赦される→であれば福音を知らない方が安全。布教するほど「聞いたのに信じなかった」人が増える。" },
+          ].map((x, i) => (
+            <div key={i} style={{ background: "rgba(0,0,0,0.15)", border: "1px solid #2a2520", borderRadius: 6, padding: 14, margin: "10px 0" }}>
+              <div style={{ fontSize: 13, color: "#c4a862", marginBottom: 6 }}>{x.t}</div>
+              <div style={{ fontSize: 12, color: "#7a6d5e", lineHeight: 1.7 }}>{x.d}</div>
+            </div>
+          ))}
+        </>)}
+
+        <HR />
+
+        {/* ===== CANON ===== */}
+        {sec("canon", <>
+          <SH num="八">正典はどう作られたか</SH>
+          <P>聖書の66巻（あるいは73巻）は、初期キリスト教に存在した多数の文書の中から、教会の指導者が選別したもの。選ばれなかった文書は外典とされ、一部は焚書された。</P>
+
+          <TL year="2-3C" title="初期キリスト教の多様性" text="正典の四福音書以外に、トマス福音書、フィリポ福音書、マリア福音書、ユダ福音書、ヨハネのアポクリュフォンなど多数の文書が流通。多様な読み方が共存していた。" color="#6b8cba" />
+          <TL year="180年頃" title="エイレナイオス『異端反駁』" text="グノーシス派への反論として執筆。この著作を通じて正典・信条・使徒的継承・贖罪論の発展が進んだ。" color="#c4a862" />
+          <TL year="367年" title="アタナシオスの書簡" text="初めて現在の新約聖書27文書を列挙。" color="#c4a862" />
+          <TL year="397年" title="カルタゴ会議" text="新約聖書27書を正式に承認。教義に合う文書を選び、合わない文書を排除した。" color="#c4a862" />
+          <TL year="4C以降" title="グノーシス派文書の焚書" text="内容に問題があるとされた文書は研究が禁止され、焚書の対象となった。正統派の弾圧はローマによるキリスト教弾圧をも凌ぐ激しさだったとされる。" color="#a85454" />
+          <TL year="1945年" title="ナグ・ハマディ写本の発見" text="エジプトの洞窟から52の文書が発見された。弾圧を逃れて1600年間隠されていたグノーシス派の教典。消された側の声を直接読むことが初めて可能になった。" color="#4a6741" />
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 20, margin: "24px 0" }}>
+            <div style={{ fontSize: 13, color: "#c4a862", marginBottom: 12 }}>グノーシス派の創世記の読み</div>
+            <P>2-3世紀のグノーシス派は、同じ創世記を正統派と正反対に読んだ。</P>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 12 }}>
+              {[
+                ["エデンは祝福の場所", "エデンは偽の神が人間を閉じ込めた牢獄"],
+                ["蛇は悪魔", "蛇は至高神が知識を与えるために遣わした使者"],
+                ["善悪の知識の木は試練", "善悪の知識の木はグノーシス（真の知識）を与えるもの"],
+                ["堕落＝原罪", "堕落＝偽の神の支配からの脱出"],
+                ["信仰で救われる", "知識（認識）で救われる"],
+                ["教会が必要", "各人が直接"],
+              ].map(([a, b], i) => (
+                <div key={i} style={{ padding: "8px 0", borderBottom: "1px solid #1e1b17" }}>
+                  <div style={{ color: "#6b8cba" }}>正統派：{a}</div>
+                  <div style={{ color: "#c4a862", marginTop: 2 }}>グノーシス派：{b}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Fact num="1"><T t="エイレナイオス">エイレナイオス</T>の『異端反駁』（180年頃）は<T t="グノーシス派">グノーシス派</T>への反論として書かれた。ブリタニカ百科事典によれば、この著作を通じて「権威ある聖書正典、信条、司教職の権威の発展が進んだ」。正統派の教義の体系化がグノーシス派との論争の中で加速したことは、正統派側の学術研究でも認められている。</Fact>
+          <Think num="1">グノーシス派が「知識で救われる」と主張する中で正統派は「信仰で救われる」を明確化し、グノーシス派が「各人が直接啓示を受けられる」と主張する中で「教会の権威を通じて」を整備した。ただし論争が唯一の原因だったとは言い切れず、ローマ帝国の政治、ユダヤ教との関係など複数の要因がある。</Think>
+          <Q>正典を選んだのは人間。選ぶ基準を決めたのも人間。「全部読めばわかる」と言うとき、その「全部」には排除された数十の文書が含まれていない。教会が設計した「全部」を読んで教会の教義に到達するのは、何を意味するのか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== THOMAS ===== */}
+        {sec("thomas", <>
+          <SH num="九">もう一つの声 — <T t="トマス福音書">トマス福音書</T></SH>
+          <P>114の語録からなるイエスの言葉集。物語なし、奇跡なし、十字架なし、復活なし。正典のコピーではなく独立した別系統の伝承に基づくとする見方が有力。</P>
+
+          <Compare
+            leftLabel="正典福音書" leftColor="#6b8cba"
+            left="形式：物語（生涯・死・復活）/ 救い：信仰（イエスの死と復活を信じる）/ 仲介：教会が必要 / 神の国：将来来る（終末論）"
+            rightLabel="トマス福音書" rightColor="#c4a862"
+            right="形式：語録集（言葉のみ）/ 救い：認識（自分で解釈する）/ 仲介：不要 / 神の国：すでにここにある"
+          />
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>正典にないイエスの言葉</div>
+          {[
+            { n: 1, t: "「この言葉の解釈を見出す者は死を味わうことがないであろう」", c: "救いは信仰ではなく「解釈」にある" },
+            { n: 3, t: "「神の国はあなた方の内にある。そして、外にある」", c: "天でも来世でもなく、今ここに" },
+            { n: 70, t: "「自分の中にあるものを生み出すならば、それがあなたがたを救う」", c: "救いは外からではなく自分の内に" },
+            { n: 77, t: "「木を割りなさい。わたしはそこにいる。石を持ち上げなさい。わたしをそこに見いだす」", c: "教会に行く必要がない。あらゆる場所に遍在" },
+            { n: 113, t: "「父の国は地上に広がっている。しかし人々はそれを見ない」", c: "終末論の否定。認識の問題" },
+          ].map((x, i) => (
+            <div key={i} style={{ borderLeft: "2px solid #c4a862", paddingLeft: 16, margin: "12px 0" }}>
+              <div style={{ fontSize: 11, color: "#6b5d4d" }}>語録 {x.n}</div>
+              <div style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.7, margin: "4px 0" }}>{x.t}</div>
+              <div style={{ fontSize: 12, color: "#7a6d5e" }}>{x.c}</div>
+            </div>
+          ))}
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "24px 0" }}>
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginBottom: 8 }}>二つの独立した伝承の共通部分と独自部分</div>
+            {[
+              { l: "共通（歴史的イエスに近い可能性）", c: "短い格言、たとえ話、「探せ」「見いだせ」", color: "#4a6741" },
+              { l: "正典だけにある", c: "誕生物語、奇跡、十字架、復活、原罪、贖罪", color: "#6b8cba" },
+              { l: "トマスだけにある", c: "「神の国はすでにここにある」「自分で解釈せよ」", color: "#c4a862" },
+            ].map((x, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: x.color, flexShrink: 0, marginTop: 5 }} />
+                <div>
+                  <div style={{ fontSize: 12, color: x.color }}>{x.l}</div>
+                  <div style={{ fontSize: 12, color: "#6b5d4d" }}>{x.c}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Q>正統派キリスト教の教義の中核（原罪・贖罪・復活）は、二つの独立した伝承の共通部分に含まれていない。これは何を意味するか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== STRUCTURE ===== */}
+        {sec("structure", <>
+          <SH num="十">聖書に組み込まれた構造</SH>
+          <P>聖書には、結果として批判を封じる機能を持つ記述が複数含まれている。</P>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "16px 0 8px" }}>「考えるな」の体系</div>
+          {[
+            { r: "ヘブライ11:1", t: "「まだ見ていない事実を確認すること」— 証拠なしに信じることが信仰の定義" },
+            { r: "箴言3:5", t: "「自分の知識にたよるな」" },
+            { r: "コリント第一1:19-20", t: "「知者の知恵を滅ぼし」「この世の知恵を愚かにされた」" },
+            { r: "エレミヤ17:9", t: "「心はすべてのものより欺く」— 分析する心自体が偽り" },
+            { r: "マタイ13:19", t: "種まきのたとえ —「御国の言葉を聞いても悟らない者…これが道端にまかれたもの」。信じない人は「道端」に分類される" },
+          ].map((x, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, margin: "8px 0", fontSize: 13 }}>
+              <span style={{ color: "#6b5d4d", minWidth: 140, flexShrink: 0 }}>{x.r}</span>
+              <span style={{ color: "#a89880" }}>{x.t}</span>
+            </div>
+          ))}
+
+          <Note>これらを合わせると：証拠を求めるな → 自分の知識を信じるな → 人間の知恵は愚か → 心は偽る → 信じないのはお前が道端だから。批判する行為そのものが信仰の枠組みの中で無効化される構造を持つように見える。</Note>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}><T t="反証不可能">反証不可能</T>な構造</div>
+          {[
+            ["良いことが起きた", "「神の恵み」"],
+            ["悪いことが起きた", "「神の試練」"],
+            ["祈りが叶った", "「信仰のおかげ」"],
+            ["祈りが叶わなかった", "「信仰が足りない」or「神の計画」"],
+            ["矛盾を指摘した", "「心が偽っている」or「理解が足りない」"],
+          ].map(([a, b], i) => (
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0", fontSize: 12 }}>
+              <span style={{ color: "#6b5d4d", minWidth: 160 }}>{a}</span>
+              <span style={{ color: "#4a4035" }}>→</span>
+              <span style={{ color: "#a89880" }}>{b}</span>
+            </div>
+          ))}
+          <Note>どちらの結果も教義を補強する方向に処理される。カール・ポパーの基準に従えば、反証できない命題は科学的主張としての力を持たない。</Note>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>救済論理の分解</div>
+          {[
+            { s: "1", t: "神が善悪の知識の木を植える", sub: "創世記2:9" },
+            { s: "2", t: "「食べるな」と禁じる", sub: "創世記2:17" },
+            { s: "3", t: "善悪を知らない人間が食べる", sub: "創世記3:6（חַטָּאת の語なし）" },
+            { s: "4", t: "「われわれのひとりのようになった」と神が脅威を感じる", sub: "創世記3:22" },
+            { s: "5", t: "追放する（命の木の喪失）", sub: "創世記3:24" },
+            { s: "⋯", t: "約1000年後、パウロがこれを「罪」と再定義", sub: "ローマ書5:12" },
+            { s: "⋯", t: "ギリシャ語 ἐφ' ᾧ（各人が罪を犯した）をラテン語 in quo（アダムの中で）と翻訳 — 多くの学者が翻訳上の問題と指摘", sub: "ウルガタ訳" },
+            { s: "⋯", t: "ギリシャ語を読めなかったアウグスティヌスがこの翻訳に基づいて「原罪」を体系化", sub: "400年頃" },
+            { s: "∴", t: "全人類は生まれた時点で有罪 → 自力で償えない → 神の子の死が必要 → 信じれば救われる", sub: "" },
+          ].map((x, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", margin: "6px 0" }}>
+              <span style={{ fontSize: 12, color: "#c4a862", width: 20, textAlign: "right", flexShrink: 0, fontFamily: "monospace" }}>{x.s}</span>
+              <div>
+                <span style={{ fontSize: 13, color: "#c4b8a4" }}>{x.t}</span>
+                {x.sub && <span style={{ fontSize: 11, color: "#4a4035", marginLeft: 8 }}>{x.sub}</span>}
+              </div>
+            </div>
+          ))}
+          <Q>ルールを作ったのも、罰を定義したのも、赦す条件を決めたのも同じ存在。全能者に他の選択肢はなかったのか。</Q>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}><T t="贖罪">贖罪</T>論の5つの問題</div>
+          <P>「罪→贖い→救済」の論理を前提から検証する。</P>
+          <Fact num="">エゼキエル18:21-22でヤハウェ自身が「悪人が罪から離れれば必ず生きる。犯した罪は覚えられない」と語っている。代価も仲介者も不要。悔い改めだけで赦される。</Fact>
+          <Think num="">上記の事実を踏まえ、贖罪の論理には以下の問いが生じる：</Think>
+          {[
+            { t: "なぜ代価が必要か", d: "全能の神がルールを設定した。全能であればルールを変更できるはず。にもかかわらず自分の子を犠牲にした。正義のルールが神の上にあるなら全能ではない。神が作ったルールなら変えられるはず。" },
+            { t: "エゼキエルの赦し vs キリストの犠牲", d: "エゼキエルでは悔い改めだけで赦される。ではなぜキリストの犠牲が必要だったのか。" },
+            { t: "代理贖罪 vs エゼキエル18:20", d: "「正しい人の正しさはその人だけのもの」。キリストの義を他者に転嫁する代理贖罪は、この原則と緊張する。" },
+            { t: "神が神に支払う構造", d: "三位一体の教義の下では、神（父）が神（子）を犠牲にして神（父）に捧げ、神（父）がそれを受け入れて人間を赦す。同一存在内で完結する構造に見える。" },
+            { t: "復活したなら犠牲は成立するか", d: "キリストは三日後に復活した。永久に失われていないなら「犠牲」の意味が問われる。「無限の存在の有限時間の苦しみ＝無限の価値」とする反論はあるが、その前提自体が検証困難。" },
+          ].map((x, i) => (
+            <div key={i} style={{ borderLeft: "2px solid #3d3428", paddingLeft: 16, margin: "12px 0" }}>
+              <div style={{ fontSize: 13, color: "#c4a862" }}>{i + 1}. {x.t}</div>
+              <div style={{ fontSize: 12, color: "#7a6d5e", lineHeight: 1.7, marginTop: 4 }}>{x.d}</div>
+            </div>
+          ))}
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>エレミヤ17:9 — 自己言及のパラドックス</div>
+          <Heb text="עָקֹב הַלֵּב מִכֹּל וְאָנֻשׁ הוּא מִי יֵדָעֶנּוּ" />
+          <P>「心はすべてのものより欺く。それは不治である。誰がそれを知り得ようか」</P>
+          <Fact num="">ヘブライ語の לֵב（lev＝心）は感情だけでなく意志・思考・判断・動機の中枢すべてを含む。</Fact>
+          <Think num="">この教義は以下の構造を持つ：(1)「心はすべてのものより欺く」→ (2) 聖書を分析する心も欺く → (3) 分析結果は信頼できない → (4) 批判が無効化される。しかし、(5)「心は欺く」を正しいと判断する心も欺くかもしれない → (6) この教義自体が信頼できない。自己言及により破綻する。さらに (7) 聖書を書いたのも人間の心 → (8) 聖書自体が欺く心の産物かもしれない。</Think>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>「解釈」と確証バイアス</div>
+          <P>「聖書は解釈と一緒に読むべき」と言われることがある。この主張自体を検証する。</P>
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "16px 0" }}>
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginBottom: 8, letterSpacing: 2 }}>「解釈」がやっていること</div>
+            {[
+              ["教義がある", "原罪、贖罪、復活、信仰による救い"],
+              ["本文を読む", ""],
+              ["教義と一致する箇所", "→ そのまま受け入れる"],
+              ["教義と矛盾する箇所", "→「比喩だ」「文脈が違う」「霊的な意味だ」と再解釈"],
+              ["再解釈の結果", "→ 教義が支持される"],
+              ["結論", "→「聖書は教義と整合している」"],
+            ].map(([a, b], i) => (
+              <div key={i} style={{ display: "flex", gap: 8, margin: "4px 0", fontSize: 12 }}>
+                <span style={{ color: "#8b7355", minWidth: 160 }}>{a}</span>
+                <span style={{ color: "#7a6d5e" }}>{b}</span>
+              </div>
+            ))}
+          </div>
+          <Compare
+            leftLabel="科学的方法" leftColor="#4a6741"
+            left="観察 → 仮説 → 検証 → 仮説が合わなければ仮説を修正する"
+            rightLabel="聖書の解釈" rightColor="#a85454"
+            right="教義（結論）→ 本文を読む → 合わなければ本文の読み方を変える → 教義は修正しない"
+          />
+          <Think num="">今日の分析の具体例：「食べると死ぬ」→死ななかった→解釈「霊的な死」（本文に書いていない）。蛇の予告が実現→解釈「部分的真実で誘導」（本文に書いていない）。「われわれ」→解釈「三位一体」（4世紀の概念を遡及適用）。教義と合わない箇所だけ「比喩」にする読み方は、結論が先にあり証拠をその結論に合わせる確証バイアスの構造を持つ。</Think>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>「聖書の科学的予言」— 確証バイアスの実例</div>
+          <P>「聖書には当時知り得なかった科学的知見が含まれている。これは神の霊感の証拠だ」という主張がある。しかし同じ聖書の中には、現代科学と一致しない記述も多数存在する。</P>
+
+          <div style={{ background: "rgba(74,103,65,0.08)", border: "1px solid #2a3520", borderRadius: 6, padding: 16, margin: "12px 0" }}>
+            <div style={{ fontSize: 11, color: "#4a6741", letterSpacing: 2, marginBottom: 10 }}>「科学的予言」として引用される記述</div>
+            {[
+              "ヨブ26:7「地を何もない上に懸ける」— 地球が宇宙空間に浮いている",
+              "イザヤ40:22「地球の上に座する方」（circle of the earth）— 地球が丸い",
+              "伝道者の書1:7「川はみな海に流れ込む…川が流れ込む所にまた流れ込む」— 水の循環",
+              "ヨブ36:27-28「神は水の滴を引き上げ、霧から雨を降らせ」— 蒸発と降雨",
+              "創世記7:11「大いなる淵の源がことごとく破れ」— 地下水の存在",
+              "詩篇8:8「海の道を通るもの」— 海流の存在（マシュー・モーリーがこの節から海流を研究）",
+              "ヨブ38:16「海の源に行ったことがあるか」— 海底の熱水噴出孔",
+              "レビ記17:11「肉の命は血にある」— 血液の重要性",
+              "レビ記13章 感染者の隔離規定 — 検疫の概念",
+              "申命記23:12-13 排泄物を陣営の外に埋める — 公衆衛生",
+              "民数記19:11-12 死体に触れた者は水で身を清める — 手洗いの概念",
+              "レビ記15章 体液に触れた者の洗浄 — 感染予防",
+              "創世記3:15「女の子孫」— 女性も生殖の「種」を持つ（当時は男性のみと考えられていた）",
+              "創世記2:21「深い眠りに落とし」— 手術における麻酔の概念",
+              "創世記17:12 割礼は生後8日目 — ビタミンKと凝固因子が8日目に最高値に達する",
+              "ヨブ38:19「光の住む所に至る道はどこか」— 光は「道」を持つ（光は移動する）",
+              "ヘブライ11:3「見えるものは見えないものから造られた」— 原子の存在",
+              "イザヤ40:22「天を薄布のように広げ」— 宇宙の膨張",
+              "詩篇102:25-26「天もあなたの手の業…衣のように古びる」— エントロピーの増大（熱力学第二法則）",
+              "エレミヤ33:22「天の万象は数えられず」— 星の数は無限（古代は肉眼で約3000個と数えられると考えられていた）",
+            ].map((x, i) => (
+              <div key={i} style={{ fontSize: 12, color: "#8a9b82", lineHeight: 1.6, padding: "4px 0", paddingLeft: 12, borderLeft: "1px solid #2a3520" }}>{x}</div>
+            ))}
+          </div>
+
+          <div style={{ background: "rgba(168,84,84,0.08)", border: "1px solid #352a2a", borderRadius: 6, padding: 16, margin: "12px 0" }}>
+            <div style={{ fontSize: 11, color: "#a85454", letterSpacing: 2, marginBottom: 10 }}>同じ聖書の中で言及されない記述</div>
+            {[
+              "サムエル上2:8「地の柱は主のもの。その上に世界を据えた」— 地は柱の上に載っている",
+              "詩篇75:3「わたしがその柱を堅くする」— 地を支える柱",
+              "詩篇104:5「地をその基の上に置き、とこしえに動かされないようにされた」— 地球は動かない",
+              "歴代誌上16:30「世界は堅く立って動かされない」— 地動説と矛盾",
+              "ヨシュア10:12-13「日よ、ギベオンの上にとどまれ…日はとどまり」— 太陽が地球の周りを動いている前提",
+              "創世記1:6-7「水の間に大空あれ…大空の上の水と大空の下の水」— 天蓋（ラキア）が空の上の水を支えている",
+              "創世記7:11「天の窓が開かれた」— 天に窓があり、そこから雨が落ちる",
+              "ヨブ37:18「雲を鋳た鏡のように堅くされるのか」— 天蓋は金属のように硬い",
+              "ヨブ38:22「雪の倉にはいったことがあるか。雹の倉を見たことがあるか」— 雪と雹は倉に貯蔵",
+              "ダニエル4:11「その木は…地の果てからも見えた」— 平らな地を前提",
+              "マタイ4:8「非常に高い山に連れて行き、世のすべての国を見せた」— 平らでなければ全ての国は見えない",
+              "レビ記11:20-23「四つ足で歩く羽のある昆虫」— 昆虫は六本足",
+              "レビ記11:6「野うさぎ…反芻するが」— 野うさぎは反芻動物ではない",
+              "レビ記11:19 コウモリを鳥に分類",
+              "マタイ13:32「からし種は、どんな種よりも小さい」— 蘭など、より小さい種が存在する",
+              "レビ記14:6-7「生きている鳥を…血の中に浸し…病人に七度振りかけ」— 鳥の血で皮膚病を治す",
+              "レビ記14:49-53 鳥の血とヒソプで家のカビを清める",
+              "申命記28:27「エジプトの腫物と、はれものとをもって撃たれる」— 病気は神の罰",
+              "創世記30:37-39 ヤコブが色のついた枝の前で家畜を交配させ、縞模様の子が生まれた — 遺伝学と矛盾する魔術的思考",
+              "創世記1:16「大きな光と小さな光」— 月は光を発していない（反射しているだけ）",
+              "創世記1:14-19 植物（第3日）の後に太陽（第4日）が作られた — 光合成なしに植物は生存できない",
+            ].map((x, i) => (
+              <div key={i} style={{ fontSize: 12, color: "#8a6e6e", lineHeight: 1.6, padding: "4px 0", paddingLeft: 12, borderLeft: "1px solid #352a2a" }}>{x}</div>
+            ))}
+          </div>
+
+          <Think num="">問いたいのは、この二つのリストから一方だけを選んで「聖書は科学的だ」と結論することは妥当か、ということ。選択の基準は「現代科学と一致するかどうか」であり、本文の性質ではない。一致するものは「予言」、一致しないものは「詩的表現」「比喩」として処理される。</Think>
+          <Q>「解釈と一緒に読むべき」は、本文だけでは教義を支持できないことを認めていないか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== GOD ARGUMENTS ===== */}
+        {sec("god_arguments", <>
+          <SH num="十一">神の存在論証を検証する</SH>
+          <P>聖書の外でも「神がいる」ことを支持する哲学的論証がある。以下は代表的な6つの論証と、それぞれに対する僕の検討。いずれの論証にも擁護する哲学者が存在しており（Swinburne, Craig, Plantinga, Alston等）、学術的に決着した議論ではないことに注意。</P>
+
+          {[
+            {
+              title: "目的論的論証（ファインチューニング）",
+              claim: "宇宙の物理定数は生命を許容するように精密に調整されている。これが偶然とは考えにくい。よって設計者（神）の存在が推定される。",
+              response: "「生命を許容するパラメータ空間が狭い」という主張は、地球型生命という一つのサンプルから逆算した定義に依存している。物理定数が異なる宇宙で全く別の化学体系のもとで何らかの自己組織化する複雑系が生まれ、それが「生命」と呼ばれている可能性がある。生命の定義を広く取れば、パラメータ空間が狭いとは言えなくなり、設計者を仮定する根拠は弱まる。",
+              verdict: "生命の定義に依存する論証だと僕は考える"
+            },
+            {
+              title: "道徳論証",
+              claim: "客観的な道徳的事実が存在するならば、その根拠となる超越的な立法者（神）が必要である。",
+              response: "道徳は超越的な根拠を必要としない。協力する個体・集団の方が生存に有利であり、裏切り者を排除する群れの方が安定したことから、道徳感覚の原型が自然発生した。これは社会的動物にも観察される。道徳の源泉が神にあるのではなく、先に存在した道徳感覚が後から宗教に取り込まれた可能性がある。",
+              verdict: "因果の方向が逆である可能性がある"
+            },
+            {
+              title: "存在論的論証（アンセルムス）",
+              claim: "「それ以上に偉大なものが考えられない存在」は、頭の中だけでなく現実にも存在しなければならない。現実に存在する方がより偉大だから。",
+              response: "「偉大さ」の定義が恣意的。存在・全知・全能・全善を「偉大さ」としているが、なぜその特定の性質の集合が偉大さを構成するのかは正当化されていない。定義を変えれば結論も変わる。概念操作から存在を導く論証。",
+              verdict: "定義に依存する論証だと僕は考える"
+            },
+            {
+              title: "宗教的経験",
+              claim: "世界中で時代を超えて人々が神秘体験を報告している。これほど普遍的な経験は、神の存在の集団的証拠とみなしうる。",
+              response: "人間の知覚は現実の忠実なコピーではなく、感覚器官と脳の処理を経た構成物。宗教的経験は神経科学的に再現・説明可能な現象。ただし、これは「宗教的経験が神の証拠にならない」ことを示すのみで、「神がいない」ことの証明にはならない。",
+              verdict: "証拠としての力が弱いが、否定もできない"
+            },
+            {
+              title: "物理法則の秩序（「数学の不合理な有効性」）",
+              claim: "宇宙が数学で記述可能な規則性を持つこと自体が驚くべきであり、その秩序の根拠として神が必要ではないか。",
+              response: "物理法則は理想化された条件下の近似にすぎず、世界の真の姿の記述ではなく予測の道具。その道具の精度が高いのは、世界に合わせて改良し続けた結果。数学が有効に見えるのは、有効なものだけを見ている生存バイアスかもしれない。",
+              verdict: "人間側のモデル構築の問題として説明しうる"
+            },
+            {
+              title: "ライプニッツの問い（「なぜ何もないのではなく何かがあるのか」）",
+              claim: "存在するものにはすべて十分な理由がなければならない（充足理由律）。宇宙の外部に自らの存在理由を内に持つ「必然的存在」すなわち神が必要。",
+              response: "この論理は妥当だと考える。否定できる理由が現時点で思いつかない。ただし、その土台である充足理由律自体が証明不可能な公理。「すべてに十分な理由がある」を証明しようとすると、その証明自体に充足理由律を前提とせざるを得ず循環する。",
+              verdict: "否定できない。現時点で有効な反論を持たない",
+            },
+          ].map((x, i) => (
+            <div key={i} style={{ background: i === 5 ? "rgba(74,103,65,0.08)" : "rgba(0,0,0,0.15)", border: `1px solid ${i === 5 ? "#4a6741" : "#2a2520"}`, borderRadius: 6, padding: 16, margin: "14px 0" }}>
+              <div style={{ fontSize: 14, color: "#e8dcc8", marginBottom: 10 }}>{i + 1}. {x.title}</div>
+              <div style={{ borderLeft: "2px solid #6b8cba", paddingLeft: 14, marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: "#6b8cba", letterSpacing: 2, marginBottom: 4 }}>主張</div>
+                <div style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>{x.claim}</div>
+              </div>
+              <div style={{ borderLeft: `2px solid ${i === 5 ? "#4a6741" : "#8b7355"}`, paddingLeft: 14, marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: i === 5 ? "#4a6741" : "#8b7355", letterSpacing: 2, marginBottom: 4 }}>{i === 5 ? "僕の立場" : "検討"}</div>
+                <div style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>{x.response}</div>
+              </div>
+              <div style={{ fontSize: 11, color: i === 5 ? "#4a6741" : "#6b5d4d", fontStyle: "italic", fontWeight: i === 5 ? 600 : 400 }}>{x.verdict}</div>
+            </div>
+          ))}
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 8, padding: 20, margin: "24px 0" }}>
+            <div style={{ fontSize: 12, color: "#c4a862", letterSpacing: 2, marginBottom: 16 }}><T t="充足理由律">充足理由律</T>はなぜ証明できないか</div>
+
+            <div style={{ fontSize: 13, color: "#a89880", lineHeight: 1.8, marginBottom: 16 }}>ライプニッツの論証は充足理由律（「存在するものにはすべて十分な理由がなければならない」）を前提とする。この前提を証明しようとすると、以下の構造に陥る。</div>
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, margin: "20px 0" }}>
+              {[
+                { text: "主張：「すべてのものには十分な理由がある」", color: "#c4a862", width: 380 },
+                { text: "↓ これを証明するには", color: "#6b5d4d", width: 240 },
+                { text: "「この主張自体にも十分な理由がなければならない」", color: "#6b8cba", width: 380 },
+                { text: "↓ その理由を示すには", color: "#6b5d4d", width: 240 },
+                { text: "「すべてのものには十分な理由がある」を前提として使う", color: "#a85454", width: 380 },
+                { text: "↓", color: "#6b5d4d", width: 40 },
+                { text: "証明したい命題を証明の中で前提にしている = 循環論法", color: "#a85454", width: 380 },
+              ].map((x, i) => (
+                <div key={i} style={{ textAlign: "center", padding: i % 2 === 0 ? "8px 16px" : "4px", fontSize: i % 2 === 0 ? 12 : 11, color: x.color, maxWidth: x.width, lineHeight: 1.6, background: i % 2 === 0 ? "rgba(0,0,0,0.2)" : "transparent", borderRadius: i % 2 === 0 ? 4 : 0, border: i === 6 ? "1px solid #a85454" : "none" }}>{x.text}</div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "20px 0 0", padding: "16px", background: "rgba(0,0,0,0.15)", borderRadius: 6 }}>
+              <div style={{ fontSize: 12, color: "#6b5d4d", letterSpacing: 2, marginBottom: 4 }}>したがって</div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#4a6741", fontSize: 12, flexShrink: 0 }}>A.</span>
+                <span style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>充足理由律を受け入れる → ライプニッツの論証は有効 → 必然的存在（何か）が必要。ただしこれは「聖書の神がいる」を意味しない。人格を持つか、人間に関心があるか、キリスト教の神かは、ここからは一切導けない。さらに、その必然的存在自体にも「なぜ存在するか」の理由が必要になり、無限に遡ってしまう。「自らの存在理由を自身の内に持つ」で止めるなら、同じ論理で「宇宙が自らの存在理由を自身の内に持つ」でも止められる</span>
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#6b8cba", fontSize: 12, flexShrink: 0 }}>B.</span>
+                <span style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>充足理由律を受け入れない → 「理由なく存在するもの」がありうる → 宇宙自体がそれかもしれない → 神は不要</span>
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#c4a862", fontSize: 12, flexShrink: 0 }}>C.</span>
+                <span style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7 }}>充足理由律が真かどうかを判定する方法がない → AとBのどちらが正しいかは決定不能</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#c4a862", marginTop: 8, lineHeight: 1.7 }}>ライプニッツの論証は「充足理由律を受け入れるかどうか」という、証明できない前提への態度に依存している。この態度は論証では決められず、各人の選択に委ねられる。</div>
+            </div>
+          </div>
+
+          <div style={{ background: "rgba(74,103,65,0.1)", border: "1px solid #4a6741", borderRadius: 6, padding: 20, margin: "24px 0" }}>
+            <div style={{ fontSize: 13, color: "#4a6741", marginBottom: 10 }}>ここまでの検証を踏まえて</div>
+            <div style={{ fontSize: 13, color: "#c4b8a4", lineHeight: 1.9 }}>
+              6つの論証を検証した結果、5つは人間の認知・定義・構築プロセスによる後付けや生存バイアスとして退けられると僕は考えた。ただし、これら5つの論証にも擁護する哲学者は存在しており、学術的に決着した議論ではない。しかし6番目のライプニッツの問いは退けられなかった。「なぜ何もないのではなく何かがあるのか」に対して、充足理由律を受け入れる限り、宇宙の外部に何らかの必然的存在を要請する論理は妥当だと考える。<br /><br />
+              ただし、その土台である充足理由律自体は証明不可能な公理であり、その必然的存在が聖書の神であるとは限らない。「何か」がある理由を説明する存在が必要だとしても、それが人格神か、人間に関心を持つ存在か、キリスト教の神かは、ここからは導けない。<br /><br />
+              <strong style={{ color: "#e8dcc8" }}>僕がかたくなに否定しているのは神の存在ではなく、「神がいる」に至る論証の過程に確証バイアスが含まれていること、そしてその過程の問題点を指摘すると「信仰が足りない」で封じられることです。</strong>
+            </div>
+          </div>
+          <Q>6つの論証のうち5つは人間側の認知の問題として説明しうる（ただし擁護する学者もいる）。残り1つは否定できないが、その前提自体が証明不可能。「神がいる」を支持する過程は、十分に立証されていると言えるか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== WHY BELIEVE ===== */}
+        {sec("why_believe", <>
+          <SH num="十二">なぜ人は信じるか</SH>
+          <P>これだけの緊張を含む聖書を、なぜ世界中の人が信じているのか。そして「全部読めばわかる」は本当か。</P>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "16px 0 8px" }}>信仰の認知的基盤</div>
+          <P>互いに接触がない世界中の文化で、独立に宗教が発生している。これはなぜか。以下は認知科学・進化心理学の知見と、そこから導いた考察を組み合わせた経路である。</P>
+
+          <div style={{ display: "flex", gap: 12, margin: "12px 0 16px", flexWrap: "wrap", fontSize: 11 }}>
+            <span style={{ color: "#4a6741" }}>● 確立された認知科学（0〜4）</span>
+            <span style={{ color: "#6b8cba" }}>● 学術的に議論中の仮説（5〜6）</span>
+            <span style={{ color: "#a85454" }}>● 僕の考察（7）</span>
+          </div>
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 8, padding: 20, margin: "20px 0" }}>
+            {[
+              { step: "0", title: "なぜ生存しようとするのか", desc: "自己複製する遺伝子は、生存に有利な形質を持つ個体を通じて次世代に伝わりやすい。生存しようとしても残れない個体は無数にいる。しかし、しようとする個体はしない個体より残る確率が高い。その確率の差が数十億年蓄積された結果、現存するすべての生物は「生存しようとする」性質を持っている。", sub: "生存本能は「目的」ではなく「結果」。しようとしたから必ず残るのではない。しようとしなかったものより残りやすかっただけ。そして残らなかったものは見えない。", color: "#4a6741", tag: "進化生物学の基礎" },
+              { step: "1", title: "因果検出の過剰", desc: "生存のためには環境の因果関係を素早く把握する必要がある。「草が動いた→虎がいるかもしれない」と判断する個体は、「偶然だ」と判断する個体より生存率が高い。", sub: "虎がいなくても反応するコスト（空振り）＜ 虎がいるのに反応しないコスト（死）。だから因果検出は過剰な方向に進化した。", color: "#4a6741", tag: "認知科学で確立" },
+              { step: "2", title: "エージェント検出バイアス", desc: "因果の原因として「意図を持った存在」を仮定する傾向。夜の物音を「誰かがいる」と感じるのは、いない場合の空振りより、いるのに気づかない場合の被害が大きいから。", sub: "HADD（過敏なエージェント検出装置）— Justin Barrettが命名。宗教の認知科学の中核概念。", color: "#4a6741", tag: "Barrett (2000) で確立" },
+              { step: "3", title: "目に見えない存在の仮定", desc: "原因が見えない出来事（雷、病気、死、幸運）に対して、目に見えないエージェントの意図を帰属させる。「なぜ雷が落ちたのか」→「誰かが怒っている」。", sub: "原因のない出来事を受け入れるより、見えない原因を仮定する方が脳にとって安定する。", color: "#4a6741", tag: "Barrett, Boyer らの研究" },
+              { step: "4", title: "超越的存在の概念", desc: "見えないエージェントに人格・意図・感情を付与し、体系化する。精霊、祖先霊、神。人間が理解しやすい「人格」の形に整理される。", sub: "人間の脳は「心の理論」（他者の意図を推測する能力）を持つ。これが見えない存在にも適用される。Boyer『Religion Explained』、Guthrie『Faces in the Clouds』。", color: "#4a6741", tag: "認知科学で確立" },
+              { step: "5", title: "物語化", desc: "超越的存在の行動・意図・命令を物語として構成する。創造神話、堕落と救済、来世。人間が世界を理解するための枠組みとなる。", sub: "物語は記憶しやすく伝達しやすい。物語を持たない信仰体系は淘汰されるという主張は文化進化論の枠組みで議論されているが、合意には至っていない。", color: "#6b8cba", tag: "学術的に議論中" },
+              { step: "6", title: "共同体の形成", desc: "共通の物語を信じる集団が形成される。共通の信仰は協力を促進し、裏切りを抑制する。集団の生存率が上がる。", sub: "D.S. Wilson『Darwin's Cathedral』、Norenzayan『Big Gods』に基づく「宗教＝集団適応」仮説。有力だが反論も多い。", color: "#6b8cba", tag: "学術的に議論中" },
+              { step: "7", title: "制度化と自己強化", desc: "物語を管理する専門家（祭司、牧師）が生まれ、組織（教会）が形成される。教義を体系化し、批判を封じ、離脱を困難にする仕組みが整備される。", sub: "宗教組織の社会学的観察と、文化進化論的な「この構造を持つ宗教が生き残った」という推論を組み合わせた僕の考察。学術的にこの形で主張されたものではない。", color: "#a85454", tag: "僕の考察" },
+            ].map((x, i, arr) => (
+              <div key={i} style={{ display: "flex", gap: 16, marginBottom: i < arr.length - 1 ? 4 : 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", border: `1.5px solid ${x.color}`, background: `${x.color}10`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: x.color, fontFamily: "monospace" }}>{x.step}</div>
+                  {i < arr.length - 1 && <div style={{ width: 1, height: 20, background: "#2a2520" }} />}
+                </div>
+                <div style={{ paddingBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, color: "#e8dcc8" }}>{x.title}</span>
+                    <span style={{ fontSize: 10, color: x.color, background: `${x.color}15`, padding: "1px 6px", borderRadius: 3 }}>{x.tag}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#a89880", lineHeight: 1.7, marginBottom: 4 }}>{x.desc}</div>
+                  <div style={{ fontSize: 11, color: "#6b5d4d", lineHeight: 1.6 }}>{x.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid #2a2520", borderRadius: 6, padding: 16, margin: "16px 0" }}>
+            <div style={{ fontSize: 12, color: "#8b7355", marginBottom: 8, letterSpacing: 2 }}>考察：収斂進化のアナロジー</div>
+            <Compare
+              leftLabel="生物の収斂進化" leftColor="#4a6741"
+              left="イルカ（哺乳類）と魚は似た流線形の体を持つ。同じ創造者がいるからではなく、同じ環境（水中）に適応した結果。"
+              rightLabel="信仰の普遍性" rightColor="#c4a862"
+              right="世界中の文化に宗教がある。同じ神がいるからではなく、同じ認知構造（人間の脳）が同じ環境（不確実な世界）に適応した結果かもしれない。"
+            />
+            <div style={{ fontSize: 12, color: "#6b5d4d", marginTop: 8, lineHeight: 1.7 }}>
+              この説明が正しいかどうかは確定できない。しかし、信仰の普遍性から「だから神は存在する」と結論するのは、イルカと魚が似ているから「だから同じ種だ」と結論するのと同じ構造の誤りである可能性がある。
+            </div>
+          </div>
+
+          <Q>各地で独立に宗教が生まれたのは、共通の神がいることの証拠か、共通の人間の脳があることの証拠か。もし前者なら、なぜ各地の宗教の内容がこれほど異なるのか。もし後者なら、信仰の存在は神の存在について何も語っていないことになるが、それでも信仰には意味があるか。</Q>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>学術データ</div>
+          <P>「聖書の矛盾に気づかないのは考えていないから」なのか、「考えた上で信じている」のか。以下のデータはその傾向を示唆する。</P>
+          <Fact num="">二つの異なる調査（Gross & Simmons 2009、Larson & Witham 1998）によれば、学問的に上位の集団ほど無神論・不可知論の割合が高い傾向がある。ただし二つの調査は質問形式・母集団が異なるため、数値の直接比較には注意が必要（詳細は下記）。</Fact>
+          <div style={{ display: "flex", gap: 16, margin: "12px 0 8px", fontSize: 11 }}>
+            <span style={{ color: "#a85454" }}>■ 無神論（神はいない）</span>
+            <span style={{ color: "#6b4040" }}>■ 不可知論（わからない）</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "6px 16px", margin: "12px 0", fontSize: 12, alignItems: "center" }}>
+            {[
+              { label: "一般のアメリカ人", atheist: 3, agnostic: 4, total: "~7.1%", note: null },
+              { label: "大学教授全体", atheist: 9.8, agnostic: 13.1, total: "22.9%", note: null },
+              { label: "エリート大学教授", atheist: null, agnostic: null, total: "36.6%", note: "内訳不明" },
+              { label: "生物学者", atheist: 27.5, agnostic: 33.3, total: "60.8%", note: null },
+              { label: "心理学者", atheist: 50, agnostic: 10.9, total: "60.9%", note: "不可知論は合計から算出" },
+              { label: "米国科学アカデミー (NAS)", atheist: 72.2, agnostic: 20.8, total: "93.0%", note: "元論文では「不信仰/疑念」" },
+            ].map((x, i) => (
+              <React.Fragment key={i}>
+                <span style={{ color: "#6b5d4d", textAlign: "right" }}>{x.label}</span>
+                <div style={{ background: "#1a1714", borderRadius: 4, height: 18, position: "relative", display: "flex" }}>
+                  {x.atheist !== null ? (
+                    <>
+                      <div style={{ background: "#a85454", height: "100%", borderRadius: "4px 0 0 4px", width: `${x.atheist}%` }} />
+                      <div style={{ background: "#6b4040", height: "100%", borderRadius: "0 4px 4px 0", width: `${x.agnostic}%` }} />
+                    </>
+                  ) : (
+                    <div style={{ background: "linear-gradient(90deg, #a85454, #6b4040)", height: "100%", borderRadius: 4, width: `${parseFloat(x.total)}%`, opacity: 0.7 }} />
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span style={{ color: "#a89880", fontSize: 11 }}>{x.total}</span>
+                  {x.note && <span style={{ color: "#4a4035", fontSize: 9 }}>{x.note}</span>}
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+          <div style={{ background: "rgba(0,0,0,0.15)", borderRadius: 6, padding: 14, margin: "12px 0" }}>
+            <div style={{ fontSize: 11, color: "#6b5d4d", marginBottom: 8, letterSpacing: 2 }}>出典と注意</div>
+            <div style={{ fontSize: 11, color: "#6b5d4d", lineHeight: 1.8 }}>
+              <strong style={{ color: "#8b7355" }}>出典1：</strong>Gross, N. & Simmons, S. (2009). "The Religiosity of American College and University Professors." <em>Sociology of Religion</em>, 70(2), 101-129.（<a href="https://doi.org/10.1093/socrel/srp026" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1093/socrel/srp026</a>）— 一般人〜生物学者・心理学者のデータ。1,417名の全米代表サンプル。全分野の教授を含む。6段階の選択肢で測定。<br />
+              <strong style={{ color: "#8b7355" }}>出典2：</strong>Larson, E.J. & Witham, L. (1998). "Leading Scientists Still Reject God." <em>Nature</em>, 394, 313.（<a href="https://doi.org/10.1038/28478" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1038/28478</a>）— NASのデータ。自然科学者のみ（生物科学、物理科学、数学）。517名に送付、回答率約50%。3択（信仰/不信仰/疑念）で測定。質問は「人類と知的・感情的に交流する神」への信仰。<br /><br />
+              <strong style={{ color: "#a85454" }}>2つの調査の違いについて：</strong>このグラフは二つの異なる調査を一つの軸に並べている。質問の形式（6段階 vs 3択）、「無神論」の定義（「神を信じない」vs 「人格神への不信仰」）、母集団（全分野の教授 vs 自然科学者のみ）が異なる。したがって一般人→教授→NASの傾向は「同じ尺度で測った同一集団の段階的変化」ではなく、「異なる調査で測った異なる集団の比較」である。傾向の方向性は示唆されるが、数値の直接比較には注意が必要。<br /><br />
+              <strong style={{ color: "#8b7355" }}>グラフについて：</strong>内訳が判明しているデータは無神論（<span style={{ color: "#a85454" }}>濃い赤</span>）と不可知論（<span style={{ color: "#6b4040" }}>暗い赤</span>）を色分けして表示した。エリート大学教授は元論文に合計のみ記載されているため、グラデーションで表示し「内訳不明」と注記している。心理学者の不可知論（10.9%）は、無神論50%（論文記載）と合計60.9%（論文記載）から逆算した値であり、「合計から算出」と注記している。無神論（神はいない）と不可知論（わからない）は異なる立場であることに注意。
+            </div>
+          </div>
+          <Think num="">このデータは「学問＝正しい」を主張するものではない。しかし、テキストを批判的に読む訓練を積んだ人ほど、聖書の主張を字義通りには受け入れない傾向があることを示唆している。信仰は知識の不足だけでは説明できないが（エリート大学にも信仰者はいる）、批判的思考と信仰の間に緊張があることはデータが裏付けている。</Think>
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>信仰が維持される構造</div>
+          {[
+            { t: "反証不可能", d: "どんな結果も教義を補強する（第十章参照）" },
+            { t: "感情的・社会的機能", d: "死の恐怖の緩和、不条理への説明、共同体の形成、道徳的枠組み、人生の意味。論理的整合性とは独立に作用する" },
+            { t: "離脱コスト", d: "幼少期からの刷り込み、教会＝社会的ネットワーク、「信じなければ地獄」の恐怖" },
+            { t: "確証バイアス", d: "信仰を支持する情報に注目し、矛盾する情報を軽視。教義と合わない箇所は「比喩」で処理される（第十章参照）" },
+            { t: "原文を読まない", d: "大多数は翻訳で、牧師が選んだ箇所だけを読む。通読しエゼキエルとローマ書を並べる人はほとんどいない" },
+          ].map((x, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, margin: "8px 0", fontSize: 12 }}>
+              <span style={{ color: "#8b7355", minWidth: 120, flexShrink: 0 }}>{x.t}</span>
+              <span style={{ color: "#7a6d5e" }}>{x.d}</span>
+            </div>
+          ))}
+
+          <div style={{ fontSize: 13, color: "#c4a862", margin: "24px 0 8px" }}>「全部読めばわかる」</div>
+          <Think num="2">「全部読めばわかる」が本当なら、全部読んだ人々の間で解釈が一致するはず。しかし現実には数万の教派に分裂している。全部読んだ教父たちの間でもグノーシス派と正統派に分かれた。全部読んだルターはカトリックから分離した。同じ本を全部読んで正反対の結論に至った。</Think>
+          <Think num="3">さらに「全部」は教会が選別した正典のみを指す。排除された数十の文書は「全部」に含まれていない。教会が設定した「全部」を読んで教会の教義に到達するのは、教会が設計した読書コースを完走することと同じ構造を持つように見える。</Think>
+          <Q>「全部読めばわかる」の「全部」に、教会が排除した数十の文書は含まれているか。教会が設計した「全部」を読んで教会の教義に到達することは、何を意味するか。</Q>
+        </>)}
+
+        <HR />
+
+        {/* ===== FINAL QUESTIONS ===== */}
+        {sec("questions", <>
+          <SH>あなたへの問い</SH>
+          <P>ここに示したのは、事実と、考察と、問いです。事実はテキストで確認できます。考察は僕の推論です。それをどう受け取るかは、あなた自身が決めることです。</P>
+
+          {[
+            "善悪を知らない存在の行為を「罪」と呼べるか。罪の認識は罪の後にしか来ないなら、原罪の前提は成立するか。",
+            "蛇の予告は本文上、実現している。神は蛇への罰の理由を明示していない。蛇は何を罰されたのか。",
+            "エゼキエル18:20でヤハウェが最も重い宣誓の上で「子は父の罪を負わない」と語った。パウロの「アダムの罪が全人類に及ぶ」とどう整合するか。",
+            "ローマ書5:12のギリシャ語 ἐφ' ᾧ は「各人が罪を犯したので」と読むのが文法的に自然とされる。ウルガタは in quo（アダムの中で）と翻訳し、この翻訳が原罪教理の形成に大きく影響した。ギリシャ語を読める東方教会がこの教理を共有していない事実をどう考えるか。",
+            "創世記の原文に「罪」の語がない出来事が、約1000年と一つの翻訳上の選択を経て全人類の教理になった。このプロセスは何を意味するか。",
+            "初期キリスト教にはグノーシス派という全く異なる読み方があった。正統派はそれへの対抗として教義を構築し、グノーシス派の文書を焚書した。「全部読めばわかる」の「全部」に排除された文書は含まれているか。",
+            "トマス福音書と正典は独立した別系統の伝承だが、共通部分がある。その共通部分に原罪・贖罪・復活は含まれていない。これは何を示唆するか。",
+            "聖書には批判を封じる仕組みが体系的に含まれている。この構造は知的探究と両立するか。",
+            "「解釈と一緒に読むべき」は、本文だけでは教義を支持できないことを認めていないか。教義と合わない箇所だけ「比喩」にする読み方は確証バイアスではないか。",
+          ].map((q, i) => (
+            <div key={i} style={{ borderLeft: "2px solid #3d3428", paddingLeft: 20, margin: "16px 0" }}>
+              <span style={{ fontSize: 11, color: "#6b5d4d", marginRight: 8 }}>{i + 1}.</span>
+              <span style={{ fontSize: 14, color: "#c4b8a4", lineHeight: 1.8 }}>{q}</span>
+            </div>
+          ))}
+
+          <div style={{ margin: "48px 0", padding: 24, borderTop: "1px solid #1e1b17" }}>
+            <div style={{ fontSize: 12, color: "#6b5d4d", letterSpacing: 2, marginBottom: 16, textAlign: "center" }}>出典・参考文献</div>
+            <div style={{ fontSize: 11, color: "#4a4035", lineHeight: 2.0, maxWidth: 600, margin: "0 auto" }}>
+              <div style={{ color: "#6b5d4d", marginBottom: 4 }}>聖書原文</div>
+              ヘブライ語：BHS (Biblia Hebraica Stuttgartensia) — オンラインで確認可能：<a href="https://www.sefaria.org/" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>Sefaria</a>（ヘブライ語原文＋英訳）、<a href="https://biblehub.com/interlinear/" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>BibleHub Interlinear</a>（語ごとの対訳）<br />
+              ギリシャ語：NA28 (Nestle-Aland 28th edition)<br /><br />
+
+              <div style={{ color: "#6b5d4d", marginBottom: 4 }}>外典・排除文書</div>
+              The Nag Hammadi Library in English (J. M. Robinson ed., 1990) — オンライン全文：<a href="http://www.gnosis.org/naghamm/nhl.html" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>gnosis.org</a><br />
+              日本語訳：岩波書店『ナグ・ハマディ文書 I-IV』（荒井献・大貫隆編、1997-98年）<br />
+              講談社学術文庫『トマスによる福音書』（荒井献訳）<br /><br />
+
+              <div style={{ color: "#6b5d4d", marginBottom: 4 }}>学術データ（第十二章）</div>
+              Gross, N. & Simmons, S. (2009). "The Religiosity of American College and University Professors." <em>Sociology of Religion</em>, 70(2), 101-129. <a href="https://doi.org/10.1093/socrel/srp026" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1093/socrel/srp026</a><br />
+              Larson, E.J. & Witham, L. (1998). "Leading Scientists Still Reject God." <em>Nature</em>, 394, 313. <a href="https://doi.org/10.1038/28478" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1038/28478</a><br /><br />
+
+              <div style={{ color: "#6b5d4d", marginBottom: 4 }}>認知科学・宗教の進化（第十二章）</div>
+              Barrett, J.L. (2000). "Exploring the Natural Foundations of Religion." <em>Trends in Cognitive Sciences</em>, 4(1), 29-34. <a href="https://doi.org/10.1016/S1364-6613(99)01419-9" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>doi:10.1016/S1364-6613(99)01419-9</a><br />
+              Boyer, P. (2001). <em>Religion Explained: The Evolutionary Origins of Religious Thought</em>. Basic Books.<br />
+              Guthrie, S. (1993). <em>Faces in the Clouds: A New Theory of Religion</em>. Oxford University Press.<br />
+              Wilson, D.S. (2002). <em>Darwin's Cathedral: Evolution, Religion, and the Nature of Society</em>. University of Chicago Press.<br />
+              Norenzayan, A. (2013). <em>Big Gods: How Religion Transformed Cooperation and Conflict</em>. Princeton University Press.<br /><br />
+
+              <div style={{ color: "#6b5d4d", marginBottom: 4 }}>神の存在論証の擁護者（第十一章）</div>
+              Swinburne, R. (2004). <em>The Existence of God</em> (2nd ed.). Oxford University Press.<br />
+              Craig, W.L. (2008). <em>Reasonable Faith</em> (3rd ed.). Crossway.<br />
+              Plantinga, A. (1974). <em>The Nature of Necessity</em>. Oxford University Press.（存在論的論証の再構成）<br />
+              Alston, W.P. (1991). <em>Perceiving God: The Epistemology of Religious Experience</em>. Cornell University Press.<br /><br />
+
+              <div style={{ color: "#6b5d4d", marginBottom: 4 }}>正典形成（第八章）</div>
+              エイレナイオス『異端反駁』— <a href="https://www.britannica.com/biography/Saint-Irenaeus" target="_blank" rel="noopener" style={{ color: "#6b8cba", textDecoration: "underline" }}>ブリタニカ百科事典</a>
+            </div>
+          </div>
+        </>)}
+
+      </div>
+    </div>
+  );
+}
+
+
+ReactDOM.render(<App />, document.getElementById("root"));
+</script>
+</body>
+</html>
